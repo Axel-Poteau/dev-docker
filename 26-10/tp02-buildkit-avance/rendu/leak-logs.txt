@@ -1,0 +1,43 @@
+$ docker build --build-arg PIP_INDEX_URL=https://svc-ci:Tr3sS3cret@pypi.internal.example.com/simple -t worker:leak .
+#8 1.848 Looking in indexes: https://svc-ci:****@pypi.internal.example.com/simple
+#8 1.910 WARNING: Retrying (Retry(total=4, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x7fcf3ce70dd0>: Failed to establish a new connection: [Errno -2] Name or service not known')': /simple/redis/
+#8 2.463 WARNING: Retrying (Retry(total=3, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x7fcf3cd47380>: Failed to establish a new connection: [Errno -2] Name or service not known')': /simple/redis/
+#8 8.501 WARNING: Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x7fcf3cd47530>: Failed to establish a new connection: [Errno -2] Name or service not known')': /simple/redis/
+#8 10.56 WARNING: Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x7fcf3cd47740>: Failed to establish a new connection: [Errno -2] Name or service not known')': /simple/redis/
+#8 14.62 WARNING: Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x7fcf3cd47950>: Failed to establish a new connection: [Errno -2] Name or service not known')': /simple/redis/
+#8 14.66 ERROR: Could not find a version that satisfies the requirement redis==5.0.8 (from versions: none)
+#8 17.91 ERROR: No matching distribution found for redis==5.0.8
+
+# Même build avec un index joignable (pypi.org ignore l identifiant) pour que l image existe :
+$ docker build -f Dockerfile.legacy --build-arg PIP_INDEX_URL=https://svc-ci:Tr3sS3cret@pypi.org/simple -t worker:leak .
+sha256:c557d6f48c2b45d005b3ada3b155668f5469467dc5886696f26fd693759930a0
+
+$ docker history --no-trunc worker:leak | grep -i s3cret   # (« secret » ne matche pas « S3cret »)
+RUN |1 PIP_INDEX_URL=https://svc-ci:Tr3sS3cret@pypi.org/simple /bin/sh -c pip install -r requirements-dev.txt # buildkit
+ARG PIP_INDEX_URL=https://svc-ci:Tr3sS3cret@pypi.org/simple
+
+$ docker image inspect worker:leak (provenance / config)
+["PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin","LANG=C.UTF-8","GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305","PYTHON_VERSION=3.12.16","PYTHON_SHA256=b5796915dc45ff745cfb4e990a7e7c93d6f546328a102ce31448d69ebc37575c"]
+
+$ docker buildx history ls / inspect (enregistrement BuildKit du build)
+BUILD ARG	VALUE
+PIP_INDEX_URL	https://svc-ci:Tr3sS3cret@pypi.org/simple
+
+$ docker save worker:leak | tar -x ; grep -r Tr3sS3cret (config JSON de l image)
+<tar>/blobs/sha256/7c52df4fb60a50c8b53b0478ed1bbed184c469e4c7f46f7f3bb9b692a1c1052d
+PIP_INDEX_URL=https://svc-ci:Tr3sS3cret@pypi.org/simple
+
+$ docker run --rm worker:leak pip config list ; ls ~/.cache/pip
+16M	/root/.cache/pip
+Dockerfile
+Dockerfile.legacy
+pip.conf.example
+requirements-dev.txt
+requirements.txt
+tests
+worker
+
+$ docker run --rm worker:leak cat /app/pip.conf.example   # COPY . . embarque aussi le fichier d'exemple
+# À placer dans ~/.config/pip/pip.conf sur le poste des devs
+[global]
+index-url = https://svc-ci:Tr3sS3cret@pypi.internal.example.com/simple

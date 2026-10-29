@@ -1,0 +1,31 @@
+$ docker buildx build --platform linux/amd64 --provenance=mode=max --sbom=true --secret id=pipconf,src=pip.conf -t localhost:5000/shop-worker:1.0-attest --push .
+sha256:09573720fdcd8509e77c4a9e51bda900b8bb65170ec3405735a98d75501c44ea
+
+$ docker buildx imagetools inspect localhost:5000/shop-worker:1.0-attest --format '{{json .Provenance}}' | jq '.SLSA | {builder, buildType, args, secrets, dependencies}'
+{
+  "builder": "",
+  "buildType": "https://github.com/moby/buildkit/blob/master/docs/attestations/slsa-definitions.md",
+  "frontend": "gateway.v0",
+  "args": {
+    "cmdline": "docker/dockerfile:1.7",
+    "source": "docker/dockerfile:1.7"
+  },
+  "secrets": [
+    {
+      "id": "pipconf",
+      "optional": true
+    }
+  ],
+  "dependencies": [
+    "pkg:docker/docker/buildkit-syft-scanner@stable-1",
+    "pkg:docker/docker/dockerfile@1.7",
+    "pkg:docker/python@3.12.7-slim-bookworm?platform=linux%2Famd64"
+  ]
+}
+# (secrets : seul l'id "pipconf" est enregistré, jamais la valeur)
+
+$ docker buildx imagetools inspect localhost:5000/shop-worker:1.0-attest --format '{{json .SBOM}}' | jq '.SPDX.packages | length'
+124
+prometheus-client 0.20.0
+psycopg2-binary 2.9.9
+redis 5.0.8

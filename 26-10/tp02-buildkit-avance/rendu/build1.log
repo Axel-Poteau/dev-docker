@@ -1,0 +1,167 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 2.04kB done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#2 DONE 1.2s
+
+#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#3 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e 0.0s done
+#3 sha256:96918c57e42509b97f10c074d80672ecdbd3bb7dcd38c1bd95960cf291207416 0B / 11.98MB 0.2s
+#3 sha256:96918c57e42509b97f10c074d80672ecdbd3bb7dcd38c1bd95960cf291207416 1.05MB / 11.98MB 0.5s
+#3 sha256:96918c57e42509b97f10c074d80672ecdbd3bb7dcd38c1bd95960cf291207416 3.15MB / 11.98MB 0.6s
+#3 sha256:96918c57e42509b97f10c074d80672ecdbd3bb7dcd38c1bd95960cf291207416 5.24MB / 11.98MB 0.8s
+#3 sha256:96918c57e42509b97f10c074d80672ecdbd3bb7dcd38c1bd95960cf291207416 8.39MB / 11.98MB 0.9s
+#3 sha256:96918c57e42509b97f10c074d80672ecdbd3bb7dcd38c1bd95960cf291207416 10.49MB / 11.98MB 1.1s
+#3 sha256:96918c57e42509b97f10c074d80672ecdbd3bb7dcd38c1bd95960cf291207416 11.98MB / 11.98MB 1.1s done
+#3 extracting sha256:96918c57e42509b97f10c074d80672ecdbd3bb7dcd38c1bd95960cf291207416 0.1s done
+#3 DONE 1.3s
+
+#4 [internal] load metadata for docker.io/library/python:3.12.7-slim-bookworm
+#4 DONE 0.9s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 114B done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 3.14kB done
+#6 DONE 0.0s
+
+#7 [runtime 1/6] FROM docker.io/library/python:3.12.7-slim-bookworm@sha256:60d9996b6a8a3689d36db740b49f4327be3be09a21122bd02fb8895abb38b50d
+#7 resolve docker.io/library/python:3.12.7-slim-bookworm@sha256:60d9996b6a8a3689d36db740b49f4327be3be09a21122bd02fb8895abb38b50d 0.0s done
+#7 sha256:46271edb89aec00565d974118707aaded82928c7ea7cb0a2bcc94b1f17e17e3d 249B / 249B 0.1s done
+#7 sha256:5f86e0092844f78afa84a3b63059ea82e82fa93a28eedde55386370d924e8cf3 0B / 13.63MB 0.3s
+#7 sha256:5e739003c33414360cf2cec9452e1935b1bfcae79f279c33009bf4c0d5596f52 0B / 3.32MB 0.2s
+#7 sha256:bc0965b23a04fe7f2d9fb20f597008fcf89891de1c705ffc1c80483a1f098e4f 0B / 28.23MB 0.2s
+#7 sha256:5f86e0092844f78afa84a3b63059ea82e82fa93a28eedde55386370d924e8cf3 1.05MB / 13.63MB 0.5s
+#7 sha256:5f86e0092844f78afa84a3b63059ea82e82fa93a28eedde55386370d924e8cf3 4.19MB / 13.63MB 0.6s
+#7 sha256:5f86e0092844f78afa84a3b63059ea82e82fa93a28eedde55386370d924e8cf3 7.34MB / 13.63MB 0.8s
+#7 sha256:5f86e0092844f78afa84a3b63059ea82e82fa93a28eedde55386370d924e8cf3 10.49MB / 13.63MB 0.9s
+#7 sha256:5e739003c33414360cf2cec9452e1935b1bfcae79f279c33009bf4c0d5596f52 1.05MB / 3.32MB 0.8s
+#7 sha256:5f86e0092844f78afa84a3b63059ea82e82fa93a28eedde55386370d924e8cf3 12.58MB / 13.63MB 1.1s
+#7 sha256:5f86e0092844f78afa84a3b63059ea82e82fa93a28eedde55386370d924e8cf3 13.63MB / 13.63MB 1.1s done
+#7 sha256:5e739003c33414360cf2cec9452e1935b1bfcae79f279c33009bf4c0d5596f52 3.32MB / 3.32MB 1.1s done
+#7 sha256:bc0965b23a04fe7f2d9fb20f597008fcf89891de1c705ffc1c80483a1f098e4f 2.10MB / 28.23MB 1.5s
+#7 sha256:bc0965b23a04fe7f2d9fb20f597008fcf89891de1c705ffc1c80483a1f098e4f 4.19MB / 28.23MB 2.0s
+#7 sha256:bc0965b23a04fe7f2d9fb20f597008fcf89891de1c705ffc1c80483a1f098e4f 7.34MB / 28.23MB 2.3s
+#7 sha256:bc0965b23a04fe7f2d9fb20f597008fcf89891de1c705ffc1c80483a1f098e4f 9.44MB / 28.23MB 2.4s
+#7 sha256:bc0965b23a04fe7f2d9fb20f597008fcf89891de1c705ffc1c80483a1f098e4f 11.53MB / 28.23MB 2.6s
+#7 sha256:bc0965b23a04fe7f2d9fb20f597008fcf89891de1c705ffc1c80483a1f098e4f 13.63MB / 28.23MB 2.7s
+#7 sha256:bc0965b23a04fe7f2d9fb20f597008fcf89891de1c705ffc1c80483a1f098e4f 15.73MB / 28.23MB 2.9s
+#7 sha256:bc0965b23a04fe7f2d9fb20f597008fcf89891de1c705ffc1c80483a1f098e4f 18.87MB / 28.23MB 3.0s
+#7 sha256:bc0965b23a04fe7f2d9fb20f597008fcf89891de1c705ffc1c80483a1f098e4f 22.02MB / 28.23MB 3.2s
+#7 sha256:bc0965b23a04fe7f2d9fb20f597008fcf89891de1c705ffc1c80483a1f098e4f 25.17MB / 28.23MB 3.3s
+#7 sha256:bc0965b23a04fe7f2d9fb20f597008fcf89891de1c705ffc1c80483a1f098e4f 28.23MB / 28.23MB 3.4s done
+#7 extracting sha256:bc0965b23a04fe7f2d9fb20f597008fcf89891de1c705ffc1c80483a1f098e4f
+#7 extracting sha256:bc0965b23a04fe7f2d9fb20f597008fcf89891de1c705ffc1c80483a1f098e4f 0.7s done
+#7 DONE 4.2s
+
+#7 [runtime 1/6] FROM docker.io/library/python:3.12.7-slim-bookworm@sha256:60d9996b6a8a3689d36db740b49f4327be3be09a21122bd02fb8895abb38b50d
+#7 extracting sha256:5e739003c33414360cf2cec9452e1935b1bfcae79f279c33009bf4c0d5596f52 0.1s done
+#7 extracting sha256:5f86e0092844f78afa84a3b63059ea82e82fa93a28eedde55386370d924e8cf3
+#7 extracting sha256:5f86e0092844f78afa84a3b63059ea82e82fa93a28eedde55386370d924e8cf3 0.5s done
+#7 DONE 4.8s
+
+#7 [runtime 1/6] FROM docker.io/library/python:3.12.7-slim-bookworm@sha256:60d9996b6a8a3689d36db740b49f4327be3be09a21122bd02fb8895abb38b50d
+#7 extracting sha256:46271edb89aec00565d974118707aaded82928c7ea7cb0a2bcc94b1f17e17e3d 0.0s done
+#7 DONE 4.8s
+
+#8 [runtime 2/6] RUN groupadd -g 10001 worker && useradd -u 10001 -g worker -M -s /usr/sbin/nologin worker
+#8 DONE 0.4s
+
+#9 [builder 2/5] RUN python -m venv /opt/venv
+#9 ...
+
+#10 [runtime 3/6] WORKDIR /app
+#10 DONE 0.0s
+
+#9 [builder 2/5] RUN python -m venv /opt/venv
+#9 DONE 3.2s
+
+#11 [builder 3/5] WORKDIR /app
+#11 DONE 0.0s
+
+#12 [builder 4/5] COPY requirements.txt ./
+#12 DONE 0.0s
+
+#13 [builder 5/5] RUN --mount=type=secret,id=pipconf,target=/etc/pip.conf     --mount=type=cache,target=/root/.cache/pip,id=pip-amd64     pip install -r requirements.txt
+#13 0.689 Collecting redis==5.0.8 (from -r requirements.txt (line 1))
+#13 0.799   Downloading redis-5.0.8-py3-none-any.whl.metadata (9.2 kB)
+#13 0.954 Collecting psycopg2-binary==2.9.9 (from -r requirements.txt (line 2))
+#13 0.971   Downloading psycopg2_binary-2.9.9-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.4 kB)
+#13 1.021 Collecting prometheus-client==0.20.0 (from -r requirements.txt (line 3))
+#13 1.038   Downloading prometheus_client-0.20.0-py3-none-any.whl.metadata (1.8 kB)
+#13 1.079 Downloading redis-5.0.8-py3-none-any.whl (255 kB)
+#13 1.146 Downloading psycopg2_binary-2.9.9-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (3.0 MB)
+#13 1.355    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.0/3.0 MB 14.5 MB/s eta 0:00:00
+#13 1.372 Downloading prometheus_client-0.20.0-py3-none-any.whl (54 kB)
+#13 1.399 Installing collected packages: redis, psycopg2-binary, prometheus-client
+#13 1.720 Successfully installed prometheus-client-0.20.0 psycopg2-binary-2.9.9 redis-5.0.8
+#13 DONE 1.8s
+
+#14 [test 1/5] COPY requirements-dev.txt ./
+#14 DONE 0.0s
+
+#15 [test 2/5] RUN --mount=type=secret,id=pipconf,target=/etc/pip.conf     --mount=type=cache,target=/root/.cache/pip,id=pip-amd64     pip install -r requirements-dev.txt
+#15 0.484 Requirement already satisfied: redis==5.0.8 in /opt/venv/lib/python3.12/site-packages (from -r requirements.txt (line 1)) (5.0.8)
+#15 0.484 Requirement already satisfied: psycopg2-binary==2.9.9 in /opt/venv/lib/python3.12/site-packages (from -r requirements.txt (line 2)) (2.9.9)
+#15 0.485 Requirement already satisfied: prometheus-client==0.20.0 in /opt/venv/lib/python3.12/site-packages (from -r requirements.txt (line 3)) (0.20.0)
+#15 0.690 Collecting pytest==8.3.2 (from -r requirements-dev.txt (line 2))
+#15 0.788   Downloading pytest-8.3.2-py3-none-any.whl.metadata (7.5 kB)
+#15 1.431 Collecting ruff==0.6.3 (from -r requirements-dev.txt (line 3))
+#15 1.469   Downloading ruff-0.6.3-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (25 kB)
+#15 1.519 Collecting iniconfig (from pytest==8.3.2->-r requirements-dev.txt (line 2))
+#15 1.534   Downloading iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
+#15 1.585 Collecting packaging (from pytest==8.3.2->-r requirements-dev.txt (line 2))
+#15 1.602   Downloading packaging-26.3-py3-none-any.whl.metadata (3.5 kB)
+#15 1.642 Collecting pluggy<2,>=1.5 (from pytest==8.3.2->-r requirements-dev.txt (line 2))
+#15 1.657   Downloading pluggy-1.7.0-py3-none-any.whl.metadata (5.0 kB)
+#15 1.682 Downloading pytest-8.3.2-py3-none-any.whl (341 kB)
+#15 1.851 Downloading ruff-0.6.3-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (10.3 MB)
+#15 3.811    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 10.3/10.3 MB 5.4 MB/s eta 0:00:00
+#15 3.825 Downloading pluggy-1.7.0-py3-none-any.whl (27 kB)
+#15 3.853 Downloading iniconfig-2.3.1-py3-none-any.whl (7.6 kB)
+#15 3.875 Downloading packaging-26.3-py3-none-any.whl (129 kB)
+#15 3.935 Installing collected packages: ruff, pluggy, packaging, iniconfig, pytest
+#15 4.427 Successfully installed iniconfig-2.3.1 packaging-26.3 pluggy-1.7.0 pytest-8.3.2 ruff-0.6.3
+#15 DONE 4.6s
+
+#16 [test 3/5] COPY worker ./worker
+#16 DONE 0.0s
+
+#17 [test 4/5] COPY tests ./tests
+#17 DONE 0.0s
+
+#18 [test 5/5] RUN ruff check worker tests && python -m pytest -q tests && touch /tmp/tests-passed
+#18 0.152 All checks passed!
+#18 0.488 ..                                                                       [100%]
+#18 0.491 2 passed in 0.07s
+#18 DONE 0.5s
+
+#19 [runtime 4/6] COPY --from=test /tmp/tests-passed /tmp/tests-passed
+#19 DONE 0.0s
+
+#20 [runtime 5/6] COPY --from=builder /opt/venv /opt/venv
+#20 DONE 0.2s
+
+#21 [runtime 6/6] COPY worker ./worker
+#21 DONE 0.0s
+
+#22 exporting to image
+#22 exporting layers
+#22 exporting layers 1.0s done
+#22 exporting manifest sha256:f318fafdbbb813d20358fcc1b0f776f918454cd5fa46af4df1e18118ce15edf6 0.0s done
+#22 exporting config sha256:3dea7abec548c3eacf48d6303febbe88fca1d010a0e1f1e4b6b174e47b898f21 0.0s done
+#22 exporting attestation manifest sha256:ccf1e9e9b7e1227b62e18360e04b4cb4e95f4867e1bdd5eef136815fe3ed0a73 0.0s done
+#22 exporting manifest list sha256:804aa6525682af614a1f6f2072db3d4b440df7ce271fbc87a64ab5e89797e24d 0.0s done
+#22 naming to docker.io/library/worker:1.0 done
+#22 unpacking to docker.io/library/worker:1.0
+#22 unpacking to docker.io/library/worker:1.0 0.3s done
+#22 DONE 1.4s
+
+real	0m20,585s
+user	0m0,145s
+sys	0m0,064s

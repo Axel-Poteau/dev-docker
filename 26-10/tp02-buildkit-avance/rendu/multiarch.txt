@@ -1,0 +1,100 @@
+$ docker buildx create --name shop --driver docker-container --driver-opt network=host --use
+$ docker buildx inspect --bootstrap
+Driver:        docker-container
+Driver Options:        network="host"
+Status:                running
+BuildKit daemon flags: --allow-insecure-entitlement=network.host
+BuildKit version:      v0.33.1
+Platforms:             linux/amd64, linux/amd64/v2, linux/amd64/v3, linux/arm64, linux/riscv64, linux/ppc64le, linux/s390x, linux/386, linux/arm/v7, linux/arm/v6
+
+$ time docker buildx build --platform linux/amd64,linux/arm64 --secret id=pipconf,src=pip.conf -t localhost:5000/shop-worker:1.0 --push .
+real	1m22,580s
+#15 [linux/amd64 builder 5/5] RUN --mount=type=secret,id=pipconf,target=/etc/pip.conf     --mount=type=cache,target=/root/.cache/pip,id=pip-amd64     pip install -r requirements.txt
+#15 [linux/amd64 builder 5/5] RUN --mount=type=secret,id=pipconf,target=/etc/pip.conf     --mount=type=cache,target=/root/.cache/pip,id=pip-amd64     pip install -r requirements.txt
+#20 [linux/amd64 test 2/5] RUN --mount=type=secret,id=pipconf,target=/etc/pip.conf     --mount=type=cache,target=/root/.cache/pip,id=pip-amd64     pip install -r requirements-dev.txt
+#23 [linux/amd64 test 5/5] RUN ruff check worker tests && python -m pytest -q tests && touch /tmp/tests-passed
+#29 [linux/arm64 builder 5/5] RUN --mount=type=secret,id=pipconf,target=/etc/pip.conf     --mount=type=cache,target=/root/.cache/pip,id=pip-arm64     pip install -r requirements.txt
+#31 [linux/arm64 test 2/5] RUN --mount=type=secret,id=pipconf,target=/etc/pip.conf     --mount=type=cache,target=/root/.cache/pip,id=pip-arm64     pip install -r requirements-dev.txt
+#34 [linux/arm64 test 5/5] RUN ruff check worker tests && python -m pytest -q tests && touch /tmp/tests-passed
+  amd64 pip install dev : #20 DONE 2.9s
+  arm64 pip install dev : #31 DONE 22.5s
+  [amd64 builder 5/5] #15 DONE 2.8s
+  [arm64 builder 5/5] #29 DONE 12.3s
+  [amd64 test 2/5] #20 DONE 2.9s
+  [arm64 test 2/5] #31 DONE 22.5s
+  [amd64 test 5/5] #23 DONE 0.5s
+  [arm64 test 5/5] #34 DONE 3.9s
+#38 exporting manifest list sha256:3de48df50c6038a90d3c5f8a605c583d9d921c0ae08ac65c8115c94894372a36 done
+#38 pushing manifest for localhost:5000/shop-worker:1.0@sha256:3de48df50c6038a90d3c5f8a605c583d9d921c0ae08ac65c8115c94894372a36
+#38 pushing manifest for localhost:5000/shop-worker:1.0@sha256:3de48df50c6038a90d3c5f8a605c583d9d921c0ae08ac65c8115c94894372a36 0.0s done
+
+$ docker buildx imagetools inspect localhost:5000/shop-worker:1.0
+Name:      localhost:5000/shop-worker:1.0
+MediaType: application/vnd.oci.image.index.v1+json
+Digest:    sha256:3de48df50c6038a90d3c5f8a605c583d9d921c0ae08ac65c8115c94894372a36
+           
+Manifests: 
+  Name:        localhost:5000/shop-worker:1.0@sha256:f432356cb30a2f51deff9becbaee171731b4aa63641b7f586e17315c6b8b9c35
+  MediaType:   application/vnd.oci.image.manifest.v1+json
+  Platform:    linux/amd64
+               
+  Name:        localhost:5000/shop-worker:1.0@sha256:55bf8a235c6bdd7976d6a1dccd7b766246a7bc87a9f106e54d3a260e24e1508e
+  MediaType:   application/vnd.oci.image.manifest.v1+json
+  Platform:    linux/arm64
+               
+  Name:        localhost:5000/shop-worker:1.0@sha256:5268d00a4788e503b4bf8750760d1b671931110ea98f9832c89c0ca59d0069f3
+  MediaType:   application/vnd.oci.image.manifest.v1+json
+  Platform:    unknown/unknown
+  Annotations: 
+    vnd.docker.reference.digest: sha256:f432356cb30a2f51deff9becbaee171731b4aa63641b7f586e17315c6b8b9c35
+    vnd.docker.reference.type:   attestation-manifest
+               
+  Name:        localhost:5000/shop-worker:1.0@sha256:b9ad73c6a17674763e477e7db82f6d7fdd0d7c09237e48c601656964c98acff5
+  MediaType:   application/vnd.oci.image.manifest.v1+json
+  Platform:    unknown/unknown
+  Annotations: 
+    vnd.docker.reference.digest: sha256:55bf8a235c6bdd7976d6a1dccd7b766246a7bc87a9f106e54d3a260e24e1508e
+    vnd.docker.reference.type:   attestation-manifest
+
+$ docker buildx build --platform linux/amd64,linux/arm64 -t worker:multi .   # sans --push ni -o
+WARNING: No output specified with docker-container driver. Build result will only remain in the build cache. To push result image into registry use --push or to load image into docker use --load
+
+$ docker run --rm --platform linux/arm64 localhost:5000/shop-worker:1.0 python -c "import platform; print(platform.machine())"
+aarch64
+
+## Étape 5 — cache distant (registre)
+$ docker buildx build --platform linux/amd64 --cache-to type=registry,ref=localhost:5000/cache:worker,mode=max --cache-from type=registry,ref=localhost:5000/cache:worker ... (1er build, cache local du builder vidé)
+#8 importing cache manifest from localhost:5000/cache:worker
+#8 ERROR: failed to configure registry cache importer: localhost:5000/cache:worker: not found
+#24 exporting cache to registry
+ > importing cache manifest from localhost:5000/cache:worker:
+real	0m16,988s
+
+# Simulation d un autre runner CI : on détruit le builder (cache local perdu) puis on rebuild
+shop removed
+real	0m4,327s
+étapes CACHED : 14
+#9 [test 3/5] COPY worker ./worker
+#10 [builder 2/5] RUN python -m venv /opt/venv
+#11 [test 2/5] RUN --mount=type=secret,id=pipconf,target=/etc/pip.conf
+#12 [runtime 3/6] WORKDIR /app
+#13 [runtime 4/6] COPY --from=test /tmp/tests-passed /tmp/tests-passed
+#14 [test 1/5] COPY requirements-dev.txt ./
+#15 [builder 3/5] WORKDIR /app
+#16 [builder 5/5] RUN --mount=type=secret,id=pipconf,target=/etc/pip.conf
+#17 [test 4/5] COPY tests ./tests
+#18 [runtime 2/6] RUN groupadd -g 10001 worker && useradd -u 10001 -g worker -M -s /usr/sbin/nologin worker
+#19 [test 5/5] RUN ruff check worker tests && python -m pytest -q tests && touch /tmp/tests-passed
+#20 [runtime 5/6] COPY --from=builder /opt/venv /opt/venv
+#21 [builder 4/5] COPY requirements.txt ./
+#22 [runtime 6/6] COPY worker ./worker
+
+# Même chose sans --cache-from (nouveau builder vide)
+shop removed
+real	0m17,956s
+étapes CACHED : 0
+
+# mode=min vs mode=max : contenu du cache exporté (manifeste de cache dans le registre)
+$ curl -s -H 'Accept: application/vnd.oci.image.manifest.v1+json' localhost:5000/v2/cache/manifests/worker | jq '{n:(.layers|length), size:([.layers[].size]|add)}'
+cache:worker     (mode=max) -> 18 blobs, 74,9 Mo   (toutes les étapes : builder, test, runtime)
+cache:worker-min (mode=min) ->  9 blobs, 53,1 Mo   (seulement les couches de l'image finale)
