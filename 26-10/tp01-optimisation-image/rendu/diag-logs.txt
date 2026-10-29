@@ -1,0 +1,88 @@
+$ docker image ls shopapi:legacy
+REPOSITORY   TAG       IMAGE ID       CREATED          SIZE
+shopapi      legacy    0eca39f59c67   31 seconds ago   1.09GB
+
+$ docker history shopapi:legacy
+IMAGE          CREATED              CREATED BY                                      SIZE      COMMENT
+0eca39f59c67   31 seconds ago       CMD ["/bin/sh" "-c" "npm start"]                0B        buildkit.dockerfile.v0
+<missing>      31 seconds ago       EXPOSE &{[{{14 0} {14 0}}] 0xc0010d16c0}        0B        buildkit.dockerfile.v0
+<missing>      31 seconds ago       ENV DATABASE_URL=postgres://shop:S3cret!@db.…   0B        buildkit.dockerfile.v0
+<missing>      31 seconds ago       ENV NODE_ENV=development                        0B        buildkit.dockerfile.v0
+<missing>      31 seconds ago       RUN /bin/sh -c npm install # buildkit           63.5MB    buildkit.dockerfile.v0
+<missing>      36 seconds ago       COPY . /app # buildkit                          49.2kB    buildkit.dockerfile.v0
+<missing>      36 seconds ago       WORKDIR /app                                    8.19kB    buildkit.dockerfile.v0
+<missing>      36 seconds ago       RUN /bin/sh -c npm install -g nodemon # buil…   7.56MB    buildkit.dockerfile.v0
+<missing>      38 seconds ago       RUN /bin/sh -c apt-get install -y nodejs # b…   173MB     buildkit.dockerfile.v0
+<missing>      44 seconds ago       RUN /bin/sh -c curl -fsSL https://deb.nodeso…   999kB     buildkit.dockerfile.v0
+<missing>      50 seconds ago       RUN /bin/sh -c apt-get install -y curl wget …   393MB     buildkit.dockerfile.v0
+<missing>      About a minute ago   RUN /bin/sh -c apt-get update # buildkit        81.5MB    buildkit.dockerfile.v0
+<missing>      About a minute ago   ENV DEBIAN_FRONTEND=noninteractive              0B        buildkit.dockerfile.v0
+<missing>      3 days ago           /bin/sh -c #(nop)  CMD ["/bin/bash"]            0B        
+<missing>      3 days ago           /bin/sh -c #(nop) ADD file:ba52f9eec2a5a7de7…   87.7MB    
+<missing>      3 days ago           /bin/sh -c #(nop)  LABEL org.opencontainers.…   0B        
+<missing>      3 days ago           /bin/sh -c #(nop)  ARG LAUNCHPAD_BUILD_ARCH     0B        
+<missing>      3 days ago           /bin/sh -c #(nop)  ARG RELEASE                  0B        
+
+$ docker run --rm shopapi:legacy env | grep -i -E "secret|database"
+DATABASE_URL=postgres://shop:S3cret!@db.internal:5432/shop
+
+$ docker run --rm shopapi:legacy id
+uid=0(root) gid=0(root) groups=0(root)
+
+$ docker run --rm shopapi:legacy ls -la /app
+total 136
+drwxr-xr-x   1 root root  4096 Oct 29 08:50 .
+drwxr-xr-x   1 root root  4096 Oct 29 08:51 ..
+-rw-rw-r--   1 root root   179 Oct 29 08:47 .env
+-rw-rw-r--   1 root root    20 Oct 29 08:47 .gitignore
+-rw-rw-r--   1 root root   505 Oct 29 08:47 Dockerfile
+-rw-rw-r--   1 root root    47 Oct 29 08:47 dump-prod-2024.sql
+drwxr-xr-x 199 root root  4096 Oct 29 08:50 node_modules
+-rw-r--r--   1 root root 96645 Oct 29 08:50 package-lock.json
+-rw-rw-r--   1 root root   545 Oct 29 08:47 package.json
+drwxrwxr-x   2 root root  4096 Oct 29 08:47 src
+drwxrwxr-x   2 root root  4096 Oct 29 08:47 test
+
+$ docker run --rm shopapi:legacy cat /app/.env
+# fichier local d'un dev, commité par erreur
+DATABASE_URL=postgres://shop:S3cret!@localhost:5432/shop
+REDIS_URL=redis://localhost:6379
+AWS_SECRET_ACCESS_KEY=AKIAFAKEFAKEFAKEFAKE
+
+$ docker inspect shopapi:legacy --format "{{json .Config}}"
+{"User":null,"Cmd":["/bin/sh","-c","npm start"],"Entrypoint":null,"Healthcheck":null,"Labels":{"org.opencontainers.image.version":"22.04"},"Env":["PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin","DEBIAN_FRONTEND=noninteractive","NODE_ENV=development","DATABASE_URL=postgres://shop:S3cret!@db.internal:5432/shop"]}
+
+$ docker run --rm shopapi:legacy du -sh /app/node_modules
+32M	/app/node_modules
+
+$ docker run --rm shopapi:legacy sh -c "which vim git gcc curl wget python3 nodemon"
+/usr/bin/vim
+/usr/bin/git
+/usr/bin/gcc
+/usr/bin/curl
+/usr/bin/wget
+/usr/bin/python3
+/usr/bin/nodemon
+
+$ docker run --rm shopapi:legacy ls node_modules/.bin
+acorn eslint js-yaml mime node-which nodemon nodetouch pino semver 
+
+$ hadolint Dockerfile
+Unable to find image 'hadolint/hadolint:v2.12.0' locally
+v2.12.0: Pulling from hadolint/hadolint
+550d38d05a88: Pulling fs layer
+550d38d05a88: Download complete
+550d38d05a88: Pull complete
+Digest: sha256:30a8fd2e785ab6176eed53f74769e04f125afb2f74a6c52aef7d463583b6d45e
+Status: Downloaded newer image for hadolint/hadolint:v2.12.0
+-:4 DL3009 info: Delete the apt-get lists after installing something
+-:5 DL3008 warning: Pin versions in apt get install. Instead of `apt-get install <package>` use `apt-get install <package>=<version>`
+-:5 DL3015 info: Avoid additional packages by specifying `--no-install-recommends`
+-:5 DL3059 info: Multiple consecutive `RUN` instructions. Consider consolidation.
+-:6 DL4006 warning: Set the SHELL option -o pipefail before RUN with a pipe in it. If you are using /bin/sh in an alpine image or if your shell is symlinked to busybox then consider explicitly setting your SHELL to /bin/ash, or disable this check
+-:7 DL3008 warning: Pin versions in apt get install. Instead of `apt-get install <package>` use `apt-get install <package>=<version>`
+-:7 DL3015 info: Avoid additional packages by specifying `--no-install-recommends`
+-:8 DL3059 info: Multiple consecutive `RUN` instructions. Consider consolidation.
+-:8 DL3016 warning: Pin versions in npm. Instead of `npm install <package>` use `npm install <package>@<version>`
+-:15 DL3025 warning: Use arguments JSON notation for CMD and ENTRYPOINT arguments
+

@@ -1,0 +1,43 @@
+# syntax=docker/dockerfile:1.7
+# shopapi — image conforme aux standards Shop SAS (multi-stage, non-root, sans secret)
+
+# ---- base : manifestes npm uniquement (couche invalidée seulement si les dépendances changent)
+FROM node:20.18.1-alpine3.21 AS base
+WORKDIR /app
+COPY package.json package-lock.json ./
+
+# ---- deps-dev : toutes les dépendances, pour les tests
+FROM base AS deps-dev
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --no-audit --no-fund
+
+# ---- test : lint + tests unitaires exécutés pendant le build
+FROM deps-dev AS test
+COPY src ./src
+COPY test ./test
+RUN npm run lint && npm test && touch /tmp/tests-passed
+
+# ---- deps-prod : dépendances de production uniquement
+FROM base AS deps-prod
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --omit=dev --no-audit --no-fund
+
+# ---- runtime distroless (bonus B1) : ni shell, ni gestionnaire de paquets, utilisateur nonroot (65532)
+FROM gcr.io/distroless/nodejs20-debian12:nonroot AS runtime
+ARG APP_VERSION=dev
+ARG GIT_SHA=unknown
+LABEL org.opencontainers.image.title="shopapi" \
+      org.opencontainers.image.version="${APP_VERSION}" \
+      org.opencontainers.image.revision="${GIT_SHA}" \
+      org.opencontainers.image.source="https://github.com/shop-sas/shopapi"
+ENV NODE_ENV=production APP_VERSION=${APP_VERSION} PORT=3000
+WORKDIR /app
+COPY --from=test /tmp/tests-passed /tmp/tests-passed
+COPY --from=deps-prod /app/node_modules ./node_modules
+COPY package.json ./
+COPY src ./src
+EXPOSE 3000
+# Pas de wget/sh : l'ENTRYPOINT de l'image est déjà "node", on lui passe un script inline
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
+  CMD ["/nodejs/bin/node", "-e", "require('http').get('http://127.0.0.1:3000/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+CMD ["src/server.js"]

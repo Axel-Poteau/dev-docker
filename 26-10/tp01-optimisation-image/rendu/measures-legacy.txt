@@ -1,0 +1,92 @@
+$ time docker build -t shopapi:legacy . (cache chaud)
+#12 CACHED
+#13 CACHED
+#14 DONE 0.1s
+real	0m0,764s
+$ echo "// commentaire" >> src/server.js && time docker build -t shopapi:legacy .
+#6 CACHED
+#7 [5/9] RUN apt-get install -y nodejs
+#7 CACHED
+#8 [6/9] RUN npm install -g nodemon
+#8 CACHED
+#9 [2/9] RUN apt-get update
+#9 CACHED
+#10 [3/9] RUN apt-get install -y curl wget vim git build-essential python3
+#10 CACHED
+#11 [7/9] WORKDIR /app
+#11 CACHED
+#12 [8/9] COPY . /app
+#13 [9/9] RUN npm install
+real	0m10,760s
+$ docker top legacy
+PID                 USER                COMMAND
+5997                root                /bin/sh -c npm start
+6020                root                npm start
+6031                root                sh -c node src/server.js
+6032                root                node src/server.js
+$ time docker stop legacy
+real	0m10,226s
+$ dive shopapi:legacy --ci
+  Using default CI config
+Image Source: docker://shopapi:legacy
+Extracting image from docker-engine... (this can take a while for large images)
+Analyzing image...
+  efficiency: 99.6108 %
+  wastedBytes: 4000045 bytes (4.0 MB)
+  userWastedPercent: 0.6073 %
+Inefficient Files:
+Count  Wasted Space  File Path
+    2        1.0 MB  /var/cache/debconf/templates.dat
+    4        992 kB  /var/log/dpkg.log
+    4        818 kB  /var/lib/dpkg/status
+    3        720 kB  /var/lib/dpkg/status-old
+    3        138 kB  /var/log/apt/term.log
+    4        102 kB  /var/log/apt/history.log
+    4         39 kB  /var/log/apt/eipp.log.xz
+    3         35 kB  /var/log/alternatives.log
+    4         24 kB  /var/lib/apt/extended_states
+    2         18 kB  /var/cache/debconf/config.dat
+    2         16 kB  /etc/ld.so.cache
+    2         16 kB  /var/cache/ldconfig/aux-cache
+    2        2.1 kB  /root/.npm/_cacache/index-v5/56/64/ed3d5de8c6d0d59951da1e504de02fdd08ee35a6146385991914f71e049b
+    2        1.4 kB  /root/.npm/_cacache/index-v5/dd/d0/16ffd1db3a6224ca5bccaa0417540a08377d5e344ec32d212f4de62789d7
+    2        1.4 kB  /root/.npm/_cacache/index-v5/e5/28/6cb7ceea594b63b308624d0ea3afb8a96e8b28887c04fac1b96594699140
+    2        1.4 kB  /root/.npm/_cacache/index-v5/36/63/6d7fc42ca9aa5273d53f743e5b766ffa18f1901559e519908602d68b8d13
+    2        1.4 kB  /root/.npm/_cacache/index-v5/5d/ad/1cb61ae613816d5f049cd87dd24009e364126f73726b1f8eab2350fec505
+    2        1.4 kB  /root/.npm/_cacache/index-v5/e6/37/c9e69f5074e9a22c766ffcc622280d4e580d2ee0238f670f28199487dd44
+    2        1.4 kB  /root/.npm/_cacache/index-v5/0c/52/cfba3106ef0da44f06a883b7b9d1fc70b8ed2a1d170599f48805f689e53c
+    2        1.4 kB  /root/.npm/_cacache/index-v5/5b/60/abc8817693594e3f5397a1f22e643b0705e09227bf632a6a9832dfdd9153
+    2        1.4 kB  /root/.npm/_cacache/index-v5/ba/24/069dd810af2d3b29e009db1dc5158b1dc6a14c29afa31754a2a89363c8ac
+    2        1.4 kB  /root/.npm/_cacache/index-v5/2a/94/333c6a1b59cd47506e0b729f3401d3caac5ec48cddc7e54bf11d97301fb0
+    2        1.4 kB  /root/.npm/_cacache/index-v5/70/4f/8fddf6699bf06631316d53463c57d4fb4bb8e75626e0de8a3e7f93c72147
+    2        1.4 kB  /root/.npm/_cacache/index-v5/31/78/da9ea6643e8a0142a039bf3cbd19dcbac51331f94543c348c9c153e4bd32
+    2        1.4 kB  /root/.npm/_cacache/index-v5/9a/de/e55058ce8e4373a683972ee4f367cac984ac7c58631661095c5a49983b4c
+    2        1.4 kB  /root/.npm/_cacache/index-v5/8d/b2/efb98333ec63b6ca87cb7ae75f9390fcea80b2f93321dfa7e712deeea8ef
+    2        1.4 kB  /root/.npm/_cacache/index-v5/83/ef/aff47278d7ef72e864717a2bb5e09eca947c1b761d2a3f590af1b5f1b379
+    2        1.4 kB  /root/.npm/_cacache/index-v5/1a/50/cc948a6276d1d50c2e471b69703dc5a7d218e612f489e3fcb3ca7be9364d
+    2        1.4 kB  /root/.npm/_cacache/index-v5/98/20/8cf39748e26add3139706a657e8908982a79143e5c985f1a3fd09031cf57
+    2        1.4 kB  /root/.npm/_cacache/index-v5/99/c7/17fd3c84571557c89f427e72603dcdfbb2d7343b7b6a5d2e0de78f4be554
+    2        1.4 kB  /root/.npm/_cacache/index-v5/cf/4b/00d89bfd0ac984d06a82cd31f98d8509bc0bf7eb452d723a00985ef6c590
+    2        1.4 kB  /root/.npm/_cacache/index-v5/64/40/e11c87114aa2eb644ceb35fff755f62c221c65cf9b097eba8c89a874631f
+    2        1.4 kB  /root/.npm/_cacache/index-v5/0b/6a/0d581bd1d3cb7ad5fd7c5e188e37b54ac6f8d44026ddec738a501ca50d32
+    2        1.4 kB  /root/.npm/_cacache/index-v5/1c/ee/3a45f8710835b97d0996c4c7c68405acc70dd5de91ed435f2d6eb89ca8fc
+    2        1.4 kB  /root/.npm/_cacache/index-v5/96/73/8504854f92148482f79c8ef4340f116b8cd7786462958b68dcb694424c26
+    2        1.4 kB  /root/.npm/_cacache/index-v5/75/39/d0508114cab31da80963fa9f8a5d57c78c99121b1241b4af44d032412620
+    2        1.4 kB  /root/.npm/_cacache/index-v5/97/2a/03a1b9559a3a37b035bdf0a91e5ef8519eda6c80bbecceed0e3b5e4dc88b
+    2        1.4 kB  /root/.npm/_cacache/index-v5/67/5f/28c12321d8b73cabed8e5f6d334222738f3757d989855c298742f545c38d
+    2        1.4 kB  /root/.npm/_cacache/index-v5/a0/c6/040205eebe8a1469c51bd2cf204508de0c8c99d31041c9481a8f7a10adb3
+    2        1.4 kB  /root/.npm/_cacache/index-v5/19/7d/0e6806198767f39fe8233ed1bd5f0107f3c44597249bfb37c864de121613
+    2        1.4 kB  /root/.npm/_cacache/index-v5/7f/c3/dc0657b650edb6ea8e350ae8c6dd6cee5ca84fcc91d9d0b666cf225a139b
+    2         904 B  /etc/group
+    2         757 B  /etc/gshadow
+    2         508 B  /var/lib/dpkg/diversions
+    2         261 B  /var/lib/dpkg/alternatives/pager
+    4           0 B  /var/lib/dpkg/lock
+    4           0 B  /var/lib/dpkg/triggers/Lock
+    2           0 B  /var/lib/dpkg/triggers/Unincorp
+    2           0 B  /etc/alternatives/pager
+Results:
+  PASS: highestUserWastedPercent
+  SKIP: highestWastedBytes: rule disabled
+  PASS: lowestEfficiency
+Result:PASS [Total:3] [Passed:2] [Failed:0] [Warn:0] [Skipped:1]
