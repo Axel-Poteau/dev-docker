@@ -1,0 +1,78 @@
+$ ./release-gate.sh shopapi:legacy
+
+== 1. Labels OCI
+  ✔ org.opencontainers.image.version=22.04
+  ✘ label org.opencontainers.image.revision absent
+  ✘ label org.opencontainers.image.source absent
+
+== 2. Utilisateur non-root
+  ✘ conteneur exécuté en root (USER='')
+
+== 3. HEALTHCHECK
+  ✘ aucun HEALTHCHECK
+
+== 4. Vulnérabilités HIGH,CRITICAL corrigeables
+  ✔ aucune CVE HIGH,CRITICAL avec correctif disponible
+
+== 5. Secrets
+  ✘ secret(s) détecté(s) :
+      CRITICAL: AWS (aws-access-key-id)
+       /app/.env:4 (added by 'COPY . /app # buildkit')
+
+REFUSÉ : 5 contrôle(s) en échec pour shopapi:legacy
+exit=1
+
+$ ./release-gate.sh shopapi:1.4.2 --push localhost:5000/shopapi:1.4.2
+
+== 1. Labels OCI
+  ✔ org.opencontainers.image.version=1.4.2
+  ✔ org.opencontainers.image.revision=e94bd89
+  ✔ org.opencontainers.image.source=https://github.com/shop-sas/shopapi
+
+== 2. Utilisateur non-root
+  ✔ USER=node
+
+== 3. HEALTHCHECK
+  ✔ HEALTHCHECK ["CMD","node","-e","require('http').get('http://127.0.0.1:'+(process.e
+
+== 4. Vulnérabilités HIGH,CRITICAL corrigeables
+  ✔ aucune CVE HIGH,CRITICAL avec correctif disponible
+
+== 5. Secrets
+  ✔ aucun secret détecté
+
+ACCEPTÉ : shopapi:1.4.2 respecte la politique Shop SAS
+
+== Publication
+  ✔ poussé : localhost:5000/shopapi@sha256:d01cdb29e942defb71ba75504a8b3f567d96d607de11de2c4038f5f8edb7a96c
+
+== Signature et SBOM (référence par digest, jamais par tag)
+  ✔ SBOM : 134 paquets
+  ✔ signé : localhost:5000/shopapi@sha256:d01cdb29e942defb71ba75504a8b3f567d96d607de11de2c4038f5f8edb7a96c
+  ✔ SBOM attesté (spdxjson)
+  ✔ vérification cosign OK
+localhost:5000/shopapi@sha256:d01cdb29e942defb71ba75504a8b3f567d96d607de11de2c4038f5f8edb7a96c
+exit=0
+
+$ ./release-gate.sh shopapi:1.4.2-alpine3.21   # Dockerfile TP01 initial (alpine 3.21.2 non mis à jour)
+
+== 1. Labels OCI
+  ✔ org.opencontainers.image.version=1.4.2
+  ✔ org.opencontainers.image.revision=56d2f81
+  ✔ org.opencontainers.image.source=https://github.com/shop-sas/shopapi
+
+== 2. Utilisateur non-root
+  ✔ USER=node
+
+== 3. HEALTHCHECK
+  ✔ HEALTHCHECK ["CMD","node","-e","require('http').get('http://127.0.0.1:'+(process.e
+
+== 4. Vulnérabilités HIGH,CRITICAL corrigeables
+  ✘ CVE HIGH,CRITICAL corrigeables détectées :
+      Total: 25 (HIGH: 23, CRITICAL: 2)
+
+== 5. Secrets
+  ✔ aucun secret détecté
+
+REFUSÉ : 1 contrôle(s) en échec pour shopapi:1.4.2-alpine3.21
+exit=1

@@ -1,0 +1,57 @@
+$ ./registry-api.sh repos
+demo
+shopapi
+
+$ ./registry-api.sh tags demo
+1.0.0 1.1.0 build-101 build-102 build-103 build-104 build-105 candidate 
+
+# Équivalent curl brut du digest (HEAD + Accept) :
+$ curl -sI --cacert registry/certs/ca.crt -u dev:*** -H "Accept: application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json,..." https://registry.local:5000/v2/demo/manifests/build-105
+content-type: application/vnd.oci.image.index.v1+json
+docker-content-digest: sha256:fe4163eac77555f4cf3be23d341d2e09616390a48f922e1e9e6aa0dff57d7ea1
+x-content-type-options: nosniff
+# Sans Accept OCI, le registre ne peut pas servir cet index : 
+HTTP 404
+
+$ ./registry-api.sh digest demo build-105 ; ./registry-api.sh digest demo candidate
+sha256:fe4163eac77555f4cf3be23d341d2e09616390a48f922e1e9e6aa0dff57d7ea1
+sha256:fe4163eac77555f4cf3be23d341d2e09616390a48f922e1e9e6aa0dff57d7ea1
+
+$ docker compose exec registry du -sh /var/lib/registry   # avant
+44.4M	/var/lib/registry
+
+# Suppression du tag "candidate" par son digest (compte ci)
+$ REGISTRY_USER=ci ./registry-api.sh delete demo sha256:fe4163eac77555f4cf3be23d341d2e09616390a48f922e1e9e6aa0dff57d7ea1
+202
+$ ./registry-api.sh tags demo
+1.0.0 1.1.0 build-101 build-102 build-103 build-104 
+=> build-105 a disparu AUSSI : on supprime un manifeste, pas un tag ; tous les tags qui pointent dessus partent.
+
+$ docker compose exec registry registry garbage-collect /etc/docker/registry/config.yml
+63 blobs marked, 1 blobs and 0 manifests eligible for deletion
+blob eligible for deletion: sha256:fe4163eac77555f4cf3be23d341d2e09616390a48f922e1e9e6aa0dff57d7ea1
+$ docker compose exec registry du -sh /var/lib/registry   # après
+44.3M	/var/lib/registry
+
+# Rétention : garder les 2 tags hors semver les plus récents
+$ REGISTRY_USER=ci ./retention.sh demo 2 --dry-run
+garde     build-104 (2026-10-29T09:19:40.056647899Z)
+garde     build-103 (2026-10-29T09:19:37.689218343Z)
+[dry-run] supprimerait build-102 (sha256:a48df1b90eb73986cc06bb5651e26bf990228e2965651485ec23d657683f9f27)
+[dry-run] supprimerait build-101 (sha256:b423c73c1d1002fa589df870533e6641f6ff40b22d8a767a7baaf31fd9ab7a53)
+
+$ REGISTRY_USER=ci ./retention.sh demo 2
+garde     build-104 (2026-10-29T09:19:40.056647899Z)
+garde     build-103 (2026-10-29T09:19:37.689218343Z)
+supprime  build-102 (sha256:a48df1b90eb73986cc06bb5651e26bf990228e2965651485ec23d657683f9f27) -> HTTP 202
+supprime  build-101 (sha256:b423c73c1d1002fa589df870533e6641f6ff40b22d8a767a7baaf31fd9ab7a53) -> HTTP 202
+$ ./registry-api.sh tags demo
+1.0.0 1.1.0 build-103 build-104 
+$ garbage-collect && du -sh
+3 blobs supprimés
+44.2M	/var/lib/registry
+$ docker compose restart registry   # vide le cache inmemory des descripteurs de blobs
+
+# Les autres images sont intactes :
+$ docker pull localhost:5000/shopapi:1.4.2
+localhost:5000/shopapi:1.4.2

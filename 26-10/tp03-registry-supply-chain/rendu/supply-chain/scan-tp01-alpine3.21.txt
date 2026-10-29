@@ -1,0 +1,108 @@
+$ trivy image --severity HIGH,CRITICAL --ignore-unfixed shopapi:1.4.2
+
+shopapi:1.4.2 (alpine 3.21.2)
+=============================
+Total: 25 (HIGH: 23, CRITICAL: 2)
+
+┌────────────┬────────────────┬──────────┬────────┬───────────────────┬───────────────┬──────────────────────────────────────────────────────────────┐
+│  Library   │ Vulnerability  │ Severity │ Status │ Installed Version │ Fixed Version │                            Title                             │
+├────────────┼────────────────┼──────────┼────────┼───────────────────┼───────────────┼──────────────────────────────────────────────────────────────┤
+│ libcrypto3 │ CVE-2026-31789 │ CRITICAL │ fixed  │ 3.3.2-r4          │ 3.3.7-r0      │ openssl: OpenSSL: Heap buffer overflow on 32-bit systems     │
+│            │                │          │        │                   │               │ from large X.509 certificate...                              │
+│            │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2026-31789                   │
+│            ├────────────────┼──────────┤        │                   ├───────────────┼──────────────────────────────────────────────────────────────┤
+│            │ CVE-2024-12797 │ HIGH     │        │                   │ 3.3.3-r0      │ openssl: RFC7250 handshakes with unauthenticated servers     │
+│            │                │          │        │                   │               │ don't abort as expected                                      │
+│            │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2024-12797                   │
+│            ├────────────────┤          │        │                   ├───────────────┼──────────────────────────────────────────────────────────────┤
+│            │ CVE-2025-15467 │          │        │                   │ 3.3.6-r0      │ openssl: OpenSSL: Remote code execution or Denial of Service │
+│            │                │          │        │                   │               │ via oversized Initialization...                              │
+│            │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2025-15467                   │
+│            ├────────────────┤          │        │                   │               ├──────────────────────────────────────────────────────────────┤
+│            │ CVE-2025-69421 │          │        │                   │               │ openssl: OpenSSL: Denial of Service via malformed PKCS#12    │
+│            │                │          │        │                   │               │ file processing                                              │
+│            │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2025-69421                   │
+│            ├────────────────┤          │        │                   ├───────────────┼──────────────────────────────────────────────────────────────┤
+│            │ CVE-2026-28387 │          │        │                   │ 3.3.7-r0      │ openssl: OpenSSL: Arbitrary code execution due to            │
+│            │                │          │        │                   │               │ use-after-free in DANE TLSA authentication...                │
+│            │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2026-28387                   │
+│            ├────────────────┤          │        │                   │               ├──────────────────────────────────────────────────────────────┤
+│            │ CVE-2026-28388 │          │        │                   │               │ openssl: OpenSSL: Denial of Service due to NULL pointer      │
+│            │                │          │        │                   │               │ dereference in delta...                                      │
+│            │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2026-28388                   │
+│            ├────────────────┤          │        │                   │               ├──────────────────────────────────────────────────────────────┤
+│            │ CVE-2026-28389 │          │        │                   │               │ openssl: OpenSSL: Denial of Service vulnerability in CMS     │
+│            │                │          │        │                   │               │ processing                                                   │
+│            │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2026-28389                   │
+│            ├────────────────┤          │        │                   │               ├──────────────────────────────────────────────────────────────┤
+│            │ CVE-2026-28390 │          │        │                   │               │ openssl: OpenSSL: Denial of Service due to NULL pointer      │
+│            │                │          │        │                   │               │ dereference in CMS...                                        │
+│            │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2026-28390                   │
+│            ├────────────────┤          │        │                   ├───────────────┼──────────────────────────────────────────────────────────────┤
+│            │ CVE-2026-45447 │          │        │                   │ 3.3.7-r1      │ openssl: Heap Use-After-Free in OpenSSL PKCS7_verify()       │
+│            │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2026-45447                   │
+│            ├────────────────┤          │        │                   ├───────────────┼──────────────────────────────────────────────────────────────┤
+│            │ CVE-2026-84782 │          │        │                   │ 3.3.7-r2      │ openssl: compat-openssl: openssl: Information disclosure via │
+│            │                │          │        │                   │               │ DTLS handshake retransmission                                │
+│            │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2026-84782                   │
+├────────────┼────────────────┼──────────┤        │                   ├───────────────┼──────────────────────────────────────────────────────────────┤
+│ libssl3    │ CVE-2026-31789 │ CRITICAL │        │                   │ 3.3.7-r0      │ openssl: OpenSSL: Heap buffer overflow on 32-bit systems     │
+│            │                │          │        │                   │               │ from large X.509 certificate...                              │
+│            │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2026-31789                   │
+│            ├────────────────┼──────────┤        │                   ├───────────────┼──────────────────────────────────────────────────────────────┤
+│            │ CVE-2024-12797 │ HIGH     │        │                   │ 3.3.3-r0      │ openssl: RFC7250 handshakes with unauthenticated servers     │
+│            │                │          │        │                   │               │ don't abort as expected                                      │
+│            │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2024-12797                   │
+│            ├────────────────┤          │        │                   ├───────────────┼──────────────────────────────────────────────────────────────┤
+│            │ CVE-2025-15467 │          │        │                   │ 3.3.6-r0      │ openssl: OpenSSL: Remote code execution or Denial of Service │
+│            │                │          │        │                   │               │ via oversized Initialization...                              │
+│            │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2025-15467                   │
+│            ├────────────────┤          │        │                   │               ├──────────────────────────────────────────────────────────────┤
+│            │ CVE-2025-69421 │          │        │                   │               │ openssl: OpenSSL: Denial of Service via malformed PKCS#12    │
+│            │                │          │        │                   │               │ file processing                                              │
+│            │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2025-69421                   │
+│            ├────────────────┤          │        │                   ├───────────────┼──────────────────────────────────────────────────────────────┤
+│            │ CVE-2026-28387 │          │        │                   │ 3.3.7-r0      │ openssl: OpenSSL: Arbitrary code execution due to            │
+│            │                │          │        │                   │               │ use-after-free in DANE TLSA authentication...                │
+│            │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2026-28387                   │
+│            ├────────────────┤          │        │                   │               ├──────────────────────────────────────────────────────────────┤
+│            │ CVE-2026-28388 │          │        │                   │               │ openssl: OpenSSL: Denial of Service due to NULL pointer      │
+│            │                │          │        │                   │               │ dereference in delta...                                      │
+│            │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2026-28388                   │
+│            ├────────────────┤          │        │                   │               ├──────────────────────────────────────────────────────────────┤
+│            │ CVE-2026-28389 │          │        │                   │               │ openssl: OpenSSL: Denial of Service vulnerability in CMS     │
+│            │                │          │        │                   │               │ processing                                                   │
+│            │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2026-28389                   │
+│            ├────────────────┤          │        │                   │               ├──────────────────────────────────────────────────────────────┤
+│            │ CVE-2026-28390 │          │        │                   │               │ openssl: OpenSSL: Denial of Service due to NULL pointer      │
+│            │                │          │        │                   │               │ dereference in CMS...                                        │
+│            │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2026-28390                   │
+│            ├────────────────┤          │        │                   ├───────────────┼──────────────────────────────────────────────────────────────┤
+│            │ CVE-2026-45447 │          │        │                   │ 3.3.7-r1      │ openssl: Heap Use-After-Free in OpenSSL PKCS7_verify()       │
+│            │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2026-45447                   │
+│            ├────────────────┤          │        │                   ├───────────────┼──────────────────────────────────────────────────────────────┤
+│            │ CVE-2026-84782 │          │        │                   │ 3.3.7-r2      │ openssl: compat-openssl: openssl: Information disclosure via │
+│            │                │          │        │                   │               │ DTLS handshake retransmission                                │
+│            │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2026-84782                   │
+├────────────┼────────────────┤          │        ├───────────────────┼───────────────┼──────────────────────────────────────────────────────────────┤
+│ musl       │ CVE-2025-26519 │          │        │ 1.2.5-r8          │ 1.2.5-r9      │ musl libc 0.9.13 through 1.2.5 before 1.2.6 has an           │
+│            │                │          │        │                   │               │ out-of-bounds write ......                                   │
+│            │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2025-26519                   │
+│            ├────────────────┤          │        │                   ├───────────────┼──────────────────────────────────────────────────────────────┤
+│            │ CVE-2026-40200 │          │        │                   │ 1.2.5-r11     │ musl: musl libc: Arbitrary code execution and denial of      │
+│            │                │          │        │                   │               │ service via stack-based...                                   │
+│            │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2026-40200                   │
+├────────────┼────────────────┤          │        │                   ├───────────────┼──────────────────────────────────────────────────────────────┤
+│ musl-utils │ CVE-2025-26519 │          │        │                   │ 1.2.5-r9      │ musl libc 0.9.13 through 1.2.5 before 1.2.6 has an           │
+│            │                │          │        │                   │               │ out-of-bounds write ......                                   │
+│            │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2025-26519                   │
+│            ├────────────────┤          │        │                   ├───────────────┼──────────────────────────────────────────────────────────────┤
+│            │ CVE-2026-40200 │          │        │                   │ 1.2.5-r11     │ musl: musl libc: Arbitrary code execution and denial of      │
+│            │                │          │        │                   │               │ service via stack-based...                                   │
+│            │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2026-40200                   │
+├────────────┼────────────────┤          │        ├───────────────────┼───────────────┼──────────────────────────────────────────────────────────────┤
+│ zlib       │ CVE-2026-22184 │          │        │ 1.3.1-r2          │ 1.3.2-r0      │ zlib: zlib: Arbitrary code execution via buffer overflow in  │
+│            │                │          │        │                   │               │ untgz utility                                                │
+│            │                │          │        │                   │               │ https://avd.aquasec.com/nvd/cve-2026-22184                   │
+└────────────┴────────────────┴──────────┴────────┴───────────────────┴───────────────┴──────────────────────────────────────────────────────────────┘
+

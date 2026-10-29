@@ -1,0 +1,9 @@
+$ ./verified-run.sh localhost:5000/shopapi:1.4.2 --rm -- node -e "console.log(process.version)"
+✔ signature vérifiée : localhost:5000/shopapi@sha256:d01cdb29e942defb71ba75504a8b3f567d96d607de11de2c4038f5f8edb7a96c
+v20.20.2
+exit=0
+
+$ ./verified-run.sh localhost:5000/demo:1.1.0 --rm   # image jamais signée
+✘ signature invalide ou absente pour localhost:5000/demo:1.1.0 : exécution refusée
+Error: no signatures found
+exit=1

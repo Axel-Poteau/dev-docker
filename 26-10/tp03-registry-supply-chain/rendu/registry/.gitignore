@@ -1,0 +1,4 @@
+# Clés et mots de passe : jamais versionnés (régénérés par gen-certs.sh / gen-htpasswd.sh)
+certs/*.key
+certs/*.srl
+auth/

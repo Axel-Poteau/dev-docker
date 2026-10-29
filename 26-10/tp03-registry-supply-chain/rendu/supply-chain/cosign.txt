@@ -1,0 +1,73 @@
+$ alias cosign='docker run --rm --network host -e COSIGN_PASSWORD= -e DOCKER_CONFIG=/cfg -v $DOCKER_CONFIG/config.json:/cfg/config.json:ro -e SSL_CERT_FILE=/ca.crt -v $PWD/registry/certs/ca.crt:/ca.crt:ro -v $PWD/supply-chain:/work -w /work ghcr.io/sigstore/cosign/cosign:v2.4.1'
+# --tlog-upload=false : pas de publication dans le journal public Rekor (registre privé, clé interne)
+
+$ docker tag shopapi:1.4.2 localhost:5000/shopapi:1.4.2 && docker push localhost:5000/shopapi:1.4.2
+1.4.2: digest: sha256:d01cdb29e942defb71ba75504a8b3f567d96d607de11de2c4038f5f8edb7a96c size: 856
+digest : sha256:d01cdb29e942defb71ba75504a8b3f567d96d607de11de2c4038f5f8edb7a96c
+
+$ cosign generate-key-pair   (COSIGN_PASSWORD vide pour le TP)
+Private key written to cosign.key
+Public key written to cosign.pub
+supply-chain/cosign.key
+supply-chain/cosign.pub
+supply-chain/cosign.txt
+
+$ cosign sign --key cosign.key --tlog-upload=false localhost:5000/shopapi@sha256:d01cdb29e942defb71ba75504a8b3f567d96d607de11de2c4038f5f8edb7a96c
+Pushing signature to: localhost:5000/shopapi
+
+$ cosign verify --key cosign.pub --insecure-ignore-tlog=true localhost:5000/shopapi:1.4.2 | jq
+
+Verification for localhost:5000/shopapi:1.4.2 --
+The following checks were performed on each of these signatures:
+  - The cosign claims were validated
+  - The signatures were verified against the specified public key
+
+[
+  {
+    "critical": {
+      "identity": {
+        "docker-reference": "localhost:5000/shopapi"
+      },
+      "image": {
+        "docker-manifest-digest": "sha256:d01cdb29e942defb71ba75504a8b3f567d96d607de11de2c4038f5f8edb7a96c"
+      },
+      "type": "cosign container image signature"
+    },
+    "optional": null
+  }
+]
+
+$ cosign attest --key cosign.key --type spdxjson --predicate sbom.json --tlog-upload=false localhost:5000/shopapi:1.4.2
+Using payload from: sbom.json
+
+$ cosign verify-attestation --key cosign.pub --type spdxjson --insecure-ignore-tlog=true localhost:5000/shopapi:1.4.2 | jq ".payload|@base64d|fromjson|.predicate.packages|length"
+predicateType=https://spdx.dev/Document packages=134 subject=d01cdb29e942defb…
+
+$ cosign tree localhost:5000/shopapi:1.4.2
+📦 Supply Chain Security Related artifacts for an image: localhost:5000/shopapi:1.4.2
+└── 💾 Attestations for an image tag: localhost:5000/shopapi:sha256-d01cdb29e942defb71ba75504a8b3f567d96d607de11de2c4038f5f8edb7a96c.att
+   └── 🍒 sha256:1542aee84eb085ff55bf654b488ab2beedcbe875b456d75e7aac910af8fe7a73
+└── 🔐 Signatures for an image tag: localhost:5000/shopapi:sha256-d01cdb29e942defb71ba75504a8b3f567d96d607de11de2c4038f5f8edb7a96c.sig
+   └── 🍒 sha256:f865cbf090f961e9beafaeab5cb268f545aad45c406556d8987bf51a73cb6846
+
+# Ce que la signature a créé dans le registre
+$ curl .../v2/_catalog
+demo shopapi 
+$ curl .../v2/shopapi/tags/list
+1 1.4 1.4.2 sha256-d01cdb29e942defb71ba75504a8b3f567d96d607de11de2c4038f5f8edb7a96c.att sha256-d01cdb29e942defb71ba75504a8b3f567d96d607de11de2c4038f5f8edb7a96c.sig sha-2fdfd4c 
+
+# Image modifiée repoussée sous le MÊME tag 1.4.2
+$ docker build -t localhost:5000/shopapi:1.4.2 (FROM shopapi:1.4.2 + /app/src/backdoor.js) && docker push localhost:5000/shopapi:1.4.2
+1.4.2: digest: sha256:9bc556b225955646c4d817a67ed52212c4c9d1e2be6b59a9e7f833904f556525 size: 856
+$ cosign verify --key cosign.pub --insecure-ignore-tlog=true localhost:5000/shopapi:1.4.2
+Error: no signatures found
+main.go:69: error during command execution: no signatures found
+exit=10
+$ cosign verify --key cosign.pub --insecure-ignore-tlog=true localhost:5000/shopapi@sha256:d01cdb29e942defb71ba75504a8b3f567d96d607de11de2c4038f5f8edb7a96c   # l'ancien digest reste signé
+Verification for localhost:5000/shopapi@sha256:d01cdb29e942defb71ba75504a8b3f567d96d607de11de2c4038f5f8edb7a96c --
+  - The signatures were verified against the specified public key
+=> la signature suit le DIGEST (tag sha256-<digest>.sig), pas le tag : le tag 1.4.2 pointe désormais sur une image non signée.
+
+# Remise en place de la bonne image
+1.4.2: digest: sha256:d01cdb29e942defb71ba75504a8b3f567d96d607de11de2c4038f5f8edb7a96c size: 856
+  - The signatures were verified against the specified public key

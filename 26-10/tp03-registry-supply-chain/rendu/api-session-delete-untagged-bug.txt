@@ -1,0 +1,48 @@
+$ ./registry-api.sh repos
+demo
+dev-test
+shopapi
+
+$ ./registry-api.sh tags demo
+1.0.0 1.1.0 build-101 build-102 build-103 build-104 build-105 candidate 
+
+# Équivalent curl brut du digest :
+$ curl -sI --cacert registry/certs/ca.crt -u dev:*** -H "Accept: application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json,..." https://registry.local:5000/v2/demo/manifests/build-105 | grep -i docker-content-digest
+content-type: application/vnd.oci.image.index.v1+json
+docker-content-digest: sha256:fe4163eac77555f4cf3be23d341d2e09616390a48f922e1e9e6aa0dff57d7ea1
+x-content-type-options: nosniff
+
+$ ./registry-api.sh digest demo build-105 ; ./registry-api.sh digest demo candidate
+sha256:fe4163eac77555f4cf3be23d341d2e09616390a48f922e1e9e6aa0dff57d7ea1
+sha256:fe4163eac77555f4cf3be23d341d2e09616390a48f922e1e9e6aa0dff57d7ea1
+
+$ docker compose exec registry du -sh /var/lib/registry   # avant
+44.5M	/var/lib/registry
+
+# Suppression du tag "candidate" par son digest (compte ci)
+$ REGISTRY_USER=ci ./registry-api.sh delete demo sha256:fe4163eac77555f4cf3be23d341d2e09616390a48f922e1e9e6aa0dff57d7ea1
+202
+$ ./registry-api.sh tags demo
+1.0.0 1.1.0 build-101 build-102 build-103 build-104 
+=> build-105 a disparu AUSSI : on supprime un manifeste, pas un tag ; tous les tags qui pointent dessus partent.
+
+$ docker compose exec registry registry garbage-collect --delete-untagged /etc/docker/registry/config.yml
+blob eligible for deletion: sha256:fe03842d927a1b9ec09d604741550d2ee1087f3c39097fe1076727f380e3586b
+blob eligible for deletion: sha256:971acfae08e9ae52030ab17d5a198efde87dcfd63cb934e042ecd608eda817b7
+blob eligible for deletion: sha256:fe4163eac77555f4cf3be23d341d2e09616390a48f922e1e9e6aa0dff57d7ea1
+blob eligible for deletion: sha256:152dc2003a2f4f57c394e7c115bd69791c1ea2cde90b0bc04b3f65254097050c
+blob eligible for deletion: sha256:2755b0ecb40e917bbbe2a557dfa0f77d43bc7a71c229fe4c7ba402c3060c728c
+blob eligible for deletion: sha256:73405fd92e313e41e7ac8f31e748e1835668d1da9a4d657b48112ef5779f128e
+$ docker compose exec registry du -sh /var/lib/registry   # après
+4.6M	/var/lib/registry
+
+# Rétention : garder les 2 tags hors semver les plus récents
+$ REGISTRY_USER=ci ./retention.sh demo 2 --dry-run
+curl: (22) The requested URL returned error: 404
+
+$ REGISTRY_USER=ci ./retention.sh demo 2
+curl: (22) The requested URL returned error: 404
+$ ./registry-api.sh tags demo
+1.0.0 1.1.0 build-101 build-102 build-103 build-104 
+$ garbage-collect puis du -sh
+4.6M	/var/lib/registry

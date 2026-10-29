@@ -1,0 +1,80 @@
+# Registre privé Shop SAS : TLS + htpasswd, persistance, UI, mirror Docker Hub
+# Prérequis : ./gen-certs.sh && ./gen-htpasswd.sh
+name: shop-registry
+
+x-defaults: &defaults
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  registry:
+    <<: *defaults
+    image: registry:2.8.3
+    ports:
+      - "5000:5000"
+    configs:
+      - source: registry-config
+        target: /etc/docker/registry/config.yml
+    volumes:
+      - registry-data:/var/lib/registry
+      - ./certs/registry.crt:/certs/registry.crt:ro
+      - ./certs/registry.key:/certs/registry.key:ro
+      - ./auth/htpasswd:/auth/htpasswd:ro
+    healthcheck:
+      # "/" répond 200 sans authentification ; /v2/ répondrait 401
+      test: ["CMD", "wget", "-q", "--spider", "--no-check-certificate", "https://localhost:5000/"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  ui:
+    <<: *defaults
+    image: joxit/docker-registry-ui:2.5.7
+    ports:
+      - "8081:80"
+    environment:
+      REGISTRY_TITLE: Shop SAS Registry
+      SINGLE_REGISTRY: "true"
+      DELETE_IMAGES: "true"
+      SHOW_CONTENT_DIGEST: "true"
+      # l'UI sert de reverse proxy vers le registre : pas de CORS à configurer
+      NGINX_PROXY_PASS_URL: https://registry:5000
+    depends_on:
+      registry:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+
+  mirror:
+    <<: *defaults
+    image: registry:2.8.3
+    ports:
+      - "5001:5000"
+    configs:
+      - source: mirror-config
+        target: /etc/docker/registry/config.yml
+    volumes:
+      - mirror-data:/var/lib/registry
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5000/"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+configs:
+  registry-config:
+    file: ./config.yml
+  mirror-config:
+    file: ./mirror-config.yml
+
+volumes:
+  registry-data:
+  mirror-data:

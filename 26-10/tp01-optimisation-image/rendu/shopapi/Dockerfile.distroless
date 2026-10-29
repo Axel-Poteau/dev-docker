@@ -2,7 +2,7 @@
 # shopapi — image conforme aux standards Shop SAS (multi-stage, non-root, sans secret)
 
 # ---- base : manifestes npm uniquement (couche invalidée seulement si les dépendances changent)
-FROM node:20.18.1-alpine3.21 AS base
+FROM node:20.20.2-alpine3.23 AS base
 WORKDIR /app
 COPY package.json package-lock.json ./
 

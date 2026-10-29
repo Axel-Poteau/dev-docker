@@ -1,0 +1,19 @@
+# crane en conteneur : --network host (accès au port publié), CA interne montée comme magasin de confiance, auth via config.json
+$ alias crane='docker run --rm --network host -e DOCKER_CONFIG=/cfg -v $DOCKER_CONFIG/config.json:/cfg/config.json:ro -v $PWD/registry/certs/ca.crt:/etc/ssl/certs/ca-certificates.crt:ro gcr.io/go-containerregistry/crane:v0.20.3'
+$ crane digest localhost:5000/shopapi:1.4.2
+sha256:3496d0e358dba9e3ebe365be77d853abc5762072b75b94e575de62bb1431d041
+$ crane tag localhost:5000/shopapi:1.4.2 1.4   (pas de pull : seul le manifeste est re-PUT sous un autre tag)
+2026/10/29 09:22:32 localhost:5000/shopapi:1.4: digest: sha256:3496d0e358dba9e3ebe365be77d853abc5762072b75b94e575de62bb1431d041 size: 856
+$ crane tag localhost:5000/shopapi:1.4.2 1
+2026/10/29 09:22:32 localhost:5000/shopapi:1: digest: sha256:3496d0e358dba9e3ebe365be77d853abc5762072b75b94e575de62bb1431d041 size: 856
+$ crane tag localhost:5000/shopapi:1.4.2 sha-2fdfd4c
+2026/10/29 09:22:33 localhost:5000/shopapi:sha-2fdfd4c: digest: sha256:3496d0e358dba9e3ebe365be77d853abc5762072b75b94e575de62bb1431d041 size: 856
+$ crane ls localhost:5000/shopapi
+sha-2fdfd4c 1 1.4 1.4.2 
+$ crane digest localhost:5000/shopapi:1.4 ; crane digest localhost:5000/shopapi:sha-2fdfd4c
+sha256:3496d0e358dba9e3ebe365be77d853abc5762072b75b94e575de62bb1431d041
+sha256:3496d0e358dba9e3ebe365be77d853abc5762072b75b94e575de62bb1431d041
+$ docker compose logs registry | grep -E "(PUT|POST|PATCH) /v2/shopapi"   (seuls des PUT de manifestes, aucun upload de blob)
+      1 "PUT /v2/shopapi/manifests/1
+      1 "PUT /v2/shopapi/manifests/1.4
+      1 "PUT /v2/shopapi/manifests/sha-2fdfd4c

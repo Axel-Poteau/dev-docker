@@ -1,0 +1,19 @@
+# Mirror pull-through de Docker Hub (lecture seule pour les clients, cache local des blobs)
+version: 0.1
+log:
+  level: info
+  fields:
+    service: mirror
+storage:
+  filesystem:
+    rootdirectory: /var/lib/registry
+  cache:
+    blobdescriptor: inmemory
+  delete:
+    enabled: true   # nécessaire pour que le proxy puisse purger les blobs expirés
+http:
+  addr: :5000
+proxy:
+  remoteurl: https://registry-1.docker.io
+  # username / password Docker Hub ici pour relever la rate limit (compte de service)
+  ttl: 168h

@@ -9,6 +9,11 @@ Le code applicatif (`src/`, `test/`, `package.json`) n'est **pas modifié**. Seu
 généré une fois (`npm install --package-lock-only` dans `node:20.18.1-alpine3.21`) et à versionner,
 indispensable à `npm ci` et à la reproductibilité.
 
+> **Mise à jour (TP03)** : le scan trivy du TP03 a trouvé 25 CVE HIGH/CRITICAL corrigeables dans la base
+> `alpine:3.21.2` / `node:20.18.1` (OpenSSL, musl, zlib). Le Dockerfile utilise désormais
+> `node:20.20.2-alpine3.23` et `alpine:3.23.7` : 0 CVE HIGH/CRITICAL, image de 175 Mo, mêmes contrôles
+> validés (non-root, `healthy`, hadolint vide). Les mesures ci-dessous datent de la première version.
+
 ## Tableau avant / après
 
 Mesures sur Docker Desktop 28.4 (Linux, store d'images containerd).

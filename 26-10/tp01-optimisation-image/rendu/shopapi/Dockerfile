@@ -2,7 +2,7 @@
 # shopapi — image conforme aux standards Shop SAS (multi-stage, non-root, sans secret)
 
 # ---- base : manifestes npm uniquement (couche invalidée seulement si les dépendances changent)
-FROM node:20.18.1-alpine3.21 AS base
+FROM node:20.20.2-alpine3.23 AS base
 WORKDIR /app
 COPY package.json package-lock.json ./
 
@@ -25,7 +25,7 @@ RUN --mount=type=cache,target=/root/.npm \
 # ---- runtime : image finale
 # alpine nu + binaire node copié depuis l'image officielle : ni npm, ni yarn, ni corepack
 # (≈ 45 Mo de moins et moins de surface d'attaque / CVE)
-FROM alpine:3.21.2 AS runtime
+FROM alpine:3.23.7 AS runtime
 COPY --from=base /usr/lib/libstdc++.so.6 /usr/lib/libgcc_s.so.1 /usr/lib/
 COPY --from=base /usr/local/bin/node /usr/local/bin/node
 RUN addgroup -g 1000 node && adduser -u 1000 -G node -s /bin/sh -D node
@@ -45,7 +45,7 @@ LABEL org.opencontainers.image.title="shopapi" \
       org.opencontainers.image.version="${APP_VERSION}" \
       org.opencontainers.image.revision="${GIT_SHA}" \
       org.opencontainers.image.source="${SOURCE_URL}" \
-      org.opencontainers.image.base.name="docker.io/library/alpine:3.21.2"
+      org.opencontainers.image.base.name="docker.io/library/alpine:3.23.7"
 ENV NODE_ENV=production \
     APP_VERSION=${APP_VERSION} \
     PORT=3000

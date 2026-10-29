@@ -1,0 +1,53 @@
+# registry.local résolu via curl --resolve (pas de sudo pour /etc/hosts) ; vérification TLS stricte avec --cacert certs/ca.crt
+$ curl https://registry.local:5000/v2/
+{"errors":[{"code":"UNAUTHORIZED","message":"authentication required","detail":null}]}
+ -> HTTP 401
+$ curl https://registry.local:5000/v2/ (sans --cacert : certificat non reconnu)
+000 SSL certificate problem: unable to get local issuer certificate
+$ curl -u dev:dev-pull-2024 https://registry.local:5000/v2/_catalog
+{"repositories":["shopapi"]}
+
+$ curl -u dev:mauvais https://registry.local:5000/v2/_catalog
+HTTP 401
+$ openssl s_client -connect 127.0.0.1:5000 -servername registry.local -CAfile certs/ca.crt | grep Verify
+Verify return code: 0 (ok)
+
+# Côté daemon : CA installée dans ~/.docker/certs.d/{registry.local,localhost}:5000/ca.crt (Docker Desktop) ; nom localhost:5000 faute d entrée /etc/hosts
+$ docker login localhost:5000 -u ci
+Login Succeeded
+$ docker tag shopapi:1.4.2 localhost:5000/shopapi:1.4.2 && docker push localhost:5000/shopapi:1.4.2
+1.4.2: digest: sha256:3496d0e358dba9e3ebe365be77d853abc5762072b75b94e575de62bb1431d041 size: 856
+
+# Remarque : 127.0.0.0/8 fait partie des "insecure registries" par défaut du daemon
+# (docker info -f '{{json .RegistryConfig.InsecureRegistryCIDRs}}' -> ["::1/128","127.0.0.0/8"]) :
+# avec le nom localhost:5000 le daemon accepterait un certificat non reconnu ; seul registry.local:5000
+# (entrée /etc/hosts) permet de tester la validation stricte côté daemon.
+
+# htpasswd sans RBAC : le compte dev peut aussi pousser
+$ docker login -u dev && docker push localhost:5000/dev-test:1
+Login Succeeded
+(push accepté)          sha256:56fa17d2a7e7f168a043a2712e63aed1f8543aeafdcee47c58dcffe38ed51099 -> sha256:483f502c0e6aff6d80a807f25d3f88afa40439c29fdd2d21a0912e0f42db842a
+
+# Mirror Docker Hub
+$ docker info --format "{{json .RegistryConfig.Mirrors}}"
+["http://localhost:5001/"]
+$ docker pull alpine:3.20
+docker.io/library/alpine:3.20
+real	0m7,313s
+$ curl -s localhost:5001/v2/_catalog
+{"repositories":["library/alpine"]}
+$ docker compose logs mirror | grep alpine (requêtes reçues par le mirror)
+      1 "GET /v2/library/alpine/blobs/sha256:25f1d6b1951ac8eb3740558fe94cb83d377bdadf95fd9f98b50d2e1b96130471?ns=docker.io HTTP/1.1" 200
+      1 "GET /v2/library/alpine/blobs/sha256:bf8527eb54c3680e728d5b4b383a8ba730d72dae7236fbc8dff97ed6b224a731?ns=docker.io HTTP/1.1" 200
+      1 "GET /v2/library/alpine/manifests/sha256:c64c687cbea9300178b30c95835354e34c4e4febc4badfe27102879de0483b5e?ns=docker.io HTTP/1.1" 200
+      1 "GET /v2/library/alpine/manifests/sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc?ns=docker.io HTTP/1.1" 200
+      1 "HEAD /v2/library/alpine/manifests/3.20?ns=docker.io HTTP/1.1" 200
+$ docker rmi alpine:3.20 && docker pull alpine:3.20   # 2e pull
+docker.io/library/alpine:3.20
+real	0m1,148s
+$ docker compose logs mirror | grep alpine (après 2e pull : chaque requête servie 2 fois par le mirror, depuis son cache)
+      2 "GET /v2/library/alpine/blobs/sha256:25f1d6b1951ac8eb3740558fe94cb83d377bdadf95fd9f98b50d2e1b96130471?ns=docker.io HTTP/1.1" 200
+      2 "GET /v2/library/alpine/blobs/sha256:bf8527eb54c3680e728d5b4b383a8ba730d72dae7236fbc8dff97ed6b224a731?ns=docker.io HTTP/1.1" 200
+      2 "GET /v2/library/alpine/manifests/sha256:c64c687cbea9300178b30c95835354e34c4e4febc4badfe27102879de0483b5e?ns=docker.io HTTP/1.1" 200
+      2 "GET /v2/library/alpine/manifests/sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc?ns=docker.io HTTP/1.1" 200
+      2 "HEAD /v2/library/alpine/manifests/3.20?ns=docker.io HTTP/1.1" 200
