@@ -1,0 +1,13 @@
+# B1 : pg_upgrade --link sur une COPIE du volume PG14 (un seul volume contenant 14/data et 16/data : les liens durs exigent le même système de fichiers)
+$ docker volume create pgupg && docker run --rm -v shopdata_pgdata:/src:ro -v pgupg:/dst alpine sh -c "mkdir -p /dst/14/data && cp -a /src/. /dst/14/data/"
+$ time docker run --rm -v pgupg:/var/lib/postgresql -e PGUSER=shop -e POSTGRES_INITDB_ARGS="-U shop" tianon/postgres-upgrade:14-to-16 --link
+Performing Upgrade
+Linking user relation files                                   ok
+Upgrade Complete
+real	0m3,304s
+$ docker run -d --name pg16-link -v pgupg:/var/lib/postgresql -e PGDATA=/var/lib/postgresql/16/data postgres:16.4-alpine
+WARNING:  database "shop" has no actual collation version, but a version was recorded
+PostgreSQL 16.4 100000 6bca9e4b6b501c220a408fecb17b39a2
+$ du -sh 14/data 16/data   (du ne compte qu une fois un fichier lié en dur : 16/data ne montre que ce qui n est pas partagé avec 14/data)
+74.5M	/v/14/data
+45.8M	/v/16/data

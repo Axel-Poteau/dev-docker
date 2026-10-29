@@ -1,0 +1,96 @@
+# Stack du TP04 (projet shop), scripts lancés depuis 29-10/tp05-donnees-persistance/rendu
+$ (cd ../../tp04-compose-entreprise/rendu && ../../tp05-donnees-persistance/rendu/seed.sh)
+CREATE TABLE
+NOTICE:  relation "products" already exists, skipping
+NOTICE:  relation "orders" already exists, skipping
+CREATE TABLE
+INSERT 0 500
+INSERT 0 100000
+ orders |             checksum             
+--------+----------------------------------
+ 100004 | 6d9901973a7f51f1b1c49fd87604b5a8
+(1 row)
+
+
+$ ./checksum.sh
+100004 6d9901973a7f51f1b1c49fd87604b5a8
+
+$ ./backup.sh --raw
+[10:45:11] pg_dump -Fc shop -> shop-20261029-104511.dump
+[10:45:12] OK : 1,6M, 16 objets
+[10:45:12] arrêt de db pour une copie cohérente du volume shop_pgdata
+ Container shop-db-1  Stopping
+ Container shop-db-1  Stopped
+[10:45:21] OK : shop_pgdata-20261029-104511.tar.gz 13M ; db redémarré
+/home/axel/Documents/repos/docker/docker_ynov_10_26/29-10/tp05-donnees-persistance/rendu/backups/shop-20261029-104511.dump
+$ ls -la backups/
+4096 .
+4096 ..
+1595059 shop-20261029-104511.dump
+92 shop-20261029-104511.dump.sha256
+13529330 shop_pgdata-20261029-104511.tar.gz
+101 shop_pgdata-20261029-104511.tar.gz.sha256
+
+# Destruction
+$ docker compose down -v
+ Volume shop_pgdata  Removing
+ Volume shop_redisdata  Removing
+ Volume shop_pgdata  Removed
+ Volume shop_redisdata  Removed
+$ docker compose up -d --wait
+ Container shop-worker-1  Healthy
+$ ./checksum.sh   (base neuve, recréée par init.sql)
+0 
+
+# Restauration du dump logique
+$ time ./restore.sh backups/shop-20261029-104511.dump
+[10:45:36] intégrité vérifiée (sha256)
+[10:45:37] pg_restore --clean --if-exists --single-transaction shop-20261029-104511.dump
+[10:45:37] restauration terminée
+
+real	0m1,040s
+$ ./checksum.sh
+100004 6d9901973a7f51f1b1c49fd87604b5a8
+
+VERDICT dump : checksums identiques (100004 6d9901973a7f51f1b1c49fd87604b5a8)
+
+# Restauration de la copie brute du volume (après une nouvelle destruction)
+$ docker compose down -v && docker compose up -d --wait && ./checksum.sh
+0 
+$ time ./restore.sh backups/shop_pgdata-20261029-104511.tar.gz
+[10:45:53] intégrité vérifiée (sha256)
+[10:45:53] arrêt de db, restauration brute du volume shop_pgdata
+ Container shop-db-1  Stopping
+ Container shop-db-1  Stopped
+[10:46:00] restauration terminée
+
+real	0m7,359s
+$ ./checksum.sh
+100004 6d9901973a7f51f1b1c49fd87604b5a8
+VERDICT brut : checksums identiques (100004 6d9901973a7f51f1b1c49fd87604b5a8)
+
+$ (cd ../../tp04-compose-entreprise/rendu && ./smoke-test.sh)
+Smoke test sur http://localhost:8000 (Host: api.localhost)
+curl: (22) The requested URL returned error: 503
+  ✘ /ready ne répond pas
+$ docker compose logs api | grep -E "terminating|Failed running"
+error: terminating connection due to administrator command
+Failed running 'src/server.js'
+=> l arrêt de PostgreSQL (restauration brute) coupe les connexions du pool pg : événement "error" non géré par server.js -> le processus node meurt.
+   En dev, node --watch attend une modification de fichier avant de relancer ; en prod (sans --watch) le conteneur s arrête et restart: unless-stopped le relance.
+$ docker compose restart api && ./smoke-test.sh
+Smoke test sur http://localhost:8000 (Host: api.localhost)
+  ✔ /ready : {"status":"ready","checks":{"db":"ok","redis":"ok"}}
+  ✔ /products servi depuis Redis (X-Cache: HIT)
+  ✔ commande créée : {"id":1793267209802,"productId":1,"status":"pending"}
+  ✘ commande 100005 toujours 'pending' après 10 s
+$ docker compose logs worker | tail -1
+{"ts":"2026-10-29 09:46:49,806","level":"ERROR","msg":"erreur: connection already closed"}
+=> le worker avait encore sa connexion vers l ancien PostgreSQL : la commande dépilée (BRPOP) a échoué puis a été PERDUE (pas de ré-empilement), il se reconnecte ensuite.
+$ ./smoke-test.sh   (2e passage)
+Smoke test sur http://localhost:8000 (Host: api.localhost)
+  ✔ /ready : {"status":"ready","checks":{"db":"ok","redis":"ok"}}
+  ✔ /products servi depuis Redis (X-Cache: HIT)
+  ✔ commande créée : {"id":1793267236923,"productId":1,"status":"pending"}
+  ✔ commande 100006 confirmée par le worker
+OK

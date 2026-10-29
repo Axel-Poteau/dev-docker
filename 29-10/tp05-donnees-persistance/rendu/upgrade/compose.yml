@@ -1,0 +1,21 @@
+# Base "legacy" PostgreSQL 14, migrée vers 16 par upgrade-pg.sh.
+# Version et volume paramétrés (.env écrit par upgrade-pg.sh) : chaque version majeure a SON volume,
+# l'ancien reste intact pour le retour arrière.
+name: shopdata
+services:
+  db:
+    image: postgres:${PG_TAG:-14.13-alpine}
+    environment:
+      POSTGRES_USER: shop
+      POSTGRES_PASSWORD: shop
+      POSTGRES_DB: shop
+    volumes:
+      - ${PG_VOLUME:-pgdata}:/var/lib/postgresql/data
+    ports: ["5433:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shop"]
+      interval: 5s
+      retries: 10
+volumes:
+  pgdata:     # PostgreSQL 14 (d'origine)
+  pgdata16:   # PostgreSQL 16

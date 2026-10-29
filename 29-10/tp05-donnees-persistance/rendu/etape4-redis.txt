@@ -1,0 +1,15 @@
+# Redis dans la stack du TP04
+$ docker compose exec redis redis-cli CONFIG GET save appendonly appendfsync
+save
+3600 1 300 100 60 10000
+appendonly
+yes
+appendfsync
+everysec
+$ docker compose exec redis redis-cli --scan
+$ docker compose exec redis ls -la /data /data/appendonlydir
+drwx------    2 redis    redis         4096 Oct 29 09:45 .
+drwxr-xr-x    3 redis    redis         4096 Oct 29 09:45 ..
+-rw-------    1 redis    redis           89 Oct 29 09:45 appendonly.aof.1.base.rdb
+-rw-------    1 redis    redis        29403 Oct 29 09:47 appendonly.aof.1.incr.aof
+-rw-------    1 redis    redis           88 Oct 29 09:45 appendonly.aof.manifest

@@ -1,0 +1,50 @@
+# Base legacy PostgreSQL 14 (projet shopdata)
+$ docker compose up -d --wait && ./seed.sh
+ Container shopdata-db-1  Healthy
+--------+----------------------------------
+ 100000 | 6bca9e4b6b501c220a408fecb17b39a2
+(1 row)
+
+
+# Essai naïf : on change seulement le tag en 16 (même volume)
+$ PG_TAG=16.4-alpine docker compose up -d
+ Container shopdata-db-1  Started
+$ docker compose ps -a db
+shopdata-db-1 postgres:16.4-alpine Exited (1) 7 seconds ago
+$ docker compose logs db | grep -E "FATAL|DETAIL"
+2026-10-29 09:56:56.369 UTC [1] DETAIL:  The data directory was initialized by PostgreSQL version 14, which is not compatible with this version 16.4.
+2026-10-29 09:56:56.369 UTC [1] FATAL:  database files are incompatible with server
+
+$ ./upgrade-pg.sh
+[10:57:10] version source : 14.13
+[10:57:10] checksum avant  : 100000 6bca9e4b6b501c220a408fecb17b39a2
+[10:57:10] pg_dumpall (rôles + toutes les bases) et pg_dump -Fc shop
+         5097376 dumps/dumpall-20261029-105704.sql
+         479 dumps/globals-20261029-105704.sql
+         1594158 dumps/shop-20261029-105704.dump
+[10:57:12] arrêt de PostgreSQL 14.13 (le volume pgdata est conservé) — début de l'indisponibilité
+[10:57:12] démarrage de PostgreSQL 16.4 sur le volume neuf pgdata16
+[10:57:18] version cible  : 16.4
+[10:57:18] restauration : rôles (globals) puis base shop (pg_restore)
+[10:57:19] fin de l'indisponibilité : 7 s
+[10:57:19] checksum après  : 100000 6bca9e4b6b501c220a408fecb17b39a2
+[10:57:19] VERDICT : OK, données identiques. PostgreSQL 16.4 actif (pgdata16) ; pgdata conservé pour le retour arrière.
+
+$ cat .env
+PG_TAG=16.4-alpine
+PG_VOLUME=pgdata16
+$ docker compose ps
+shopdata-db-1 postgres:16.4-alpine Up 6 seconds (healthy)
+$ docker volume ls | grep shopdata
+shopdata_pgdata
+shopdata_pgdata16
+
+# Retour arrière (documenté) : réactiver PG14 et son volume intact
+$ printf "PG_TAG=14.13-alpine\nPG_VOLUME=pgdata\n" > .env && docker compose up -d --wait
+ Container shopdata-db-1  Healthy
+$ psql -c "SHOW server_version" ; checksum
+14.13
+100000 6bca9e4b6b501c220a408fecb17b39a2
+$ (retour sur 16)
+ Container shopdata-db-1  Healthy
+16.4

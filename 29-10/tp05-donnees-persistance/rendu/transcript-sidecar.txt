@@ -1,0 +1,23 @@
+$ BACKUP_SCHEDULE="@every 1m" docker compose -f compose.yml -f compose.override.yml -f compose.backup.yml up -d --wait backup
+ Container shop-backup-1  Healthy
+$ sleep 130 && docker compose logs backup | grep -E "Creating dump|created successfully"
+2026/10/29 09:53:59 32: Creating dump of shop database from db...
+2026/10/29 09:53:59 32: Cleaning older files for shop database from db...
+2026/10/29 09:53:59 32: SQL backup created successfully
+2026/10/29 09:54:59 81: Creating dump of shop database from db...
+2026/10/29 09:54:59 81: Cleaning older files for shop database from db...
+2026/10/29 09:54:59 81: SQL backup created successfully
+$ find backups | sort
+backups/daily/shop-20261029.dump 1595129 octets
+backups/daily/shop-latest.dump 18 octets
+backups/last/shop-20261029-095359.dump 1595129 octets
+backups/last/shop-20261029-095459.dump 1595129 octets
+backups/last/shop-latest.dump 25 octets
+backups/monthly/shop-202610.dump 1595129 octets
+backups/monthly/shop-latest.dump 16 octets
+backups/weekly/shop-202644.dump 1595129 octets
+backups/weekly/shop-latest.dump 16 octets
+$ pg_restore -l backups/last/shop-latest.dump | grep -c TABLE
+4
+$ docker compose ps backup
+shop-backup-1 Up 2 minutes (healthy)

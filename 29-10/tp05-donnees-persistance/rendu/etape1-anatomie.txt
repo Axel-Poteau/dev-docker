@@ -1,0 +1,131 @@
+# Stack du TP04 démarrée (projet "shop", dossier 29-10/tp04-compose-entreprise/rendu)
+$ docker inspect $(docker compose ps -q db) --format "{{json .Mounts}}" | jq
+[
+  {
+    "Type": "volume",
+    "Name": "shop_pgdata",
+    "Source": "/var/lib/docker/volumes/shop_pgdata/_data",
+    "Destination": "/var/lib/postgresql/data",
+    "Driver": "local",
+    "Mode": "rw",
+    "RW": true,
+    "Propagation": ""
+  },
+  {
+    "Type": "bind",
+    "Source": "/host_mnt/home/axel/Documents/repos/docker/docker_ynov_10_26/29-10/tp04-compose-entreprise/rendu/db/init.sql",
+    "Destination": "/docker-entrypoint-initdb.d/001-init.sql",
+    "Mode": "ro",
+    "RW": false,
+    "Propagation": "rprivate"
+  },
+  {
+    "Type": "bind",
+    "Source": "/home/axel/Documents/repos/docker/docker_ynov_10_26/29-10/tp04-compose-entreprise/rendu/secrets/db_password.txt",
+    "Destination": "/run/secrets/db_password",
+    "Mode": "",
+    "RW": false,
+    "Propagation": "rprivate"
+  }
+]
+
+$ docker volume inspect shop_pgdata
+[
+    {
+        "CreatedAt": "2026-10-29T09:31:28Z",
+        "Driver": "local",
+        "Labels": {
+            "com.docker.compose.config-hash": "2e6965aae4be884527a3afdfd8a79c1df6e053b87c8af8d38f5a222324c8c722",
+            "com.docker.compose.project": "shop",
+            "com.docker.compose.version": "2.39.4",
+            "com.docker.compose.volume": "pgdata"
+        },
+        "Mountpoint": "/var/lib/docker/volumes/shop_pgdata/_data",
+        "Name": "shop_pgdata",
+        "Options": null,
+        "Scope": "local"
+    }
+]
+
+$ docker system df -v | head -40   (extrait : volumes)
+
+VOLUME NAME                                                        LINKS     SIZE
+shop_pgdata                                                        1         48.25MB
+shop_redisdata                                                     1         1.771kB
+
+
+## Couche inscriptible du conteneur vs volume
+$ docker compose exec db touch /tmp/x && docker compose exec db sh -c "echo test > /var/lib/postgresql/data/marqueur"
+$ docker diff $(docker compose ps -q db)
+C /docker-entrypoint-initdb.d
+A /docker-entrypoint-initdb.d/001-init.sql
+C /tmp
+A /tmp/x
+C /run
+C /run/postgresql
+A /run/postgresql/.s.PGSQL.5432
+A /run/postgresql/.s.PGSQL.5432.lock
+A /run/secrets
+A /run/secrets/db_password
+=> /tmp/x apparaît (couche inscriptible du conteneur, overlayfs "upperdir") ; "marqueur" n apparaît PAS : il est écrit dans le volume, hors du système de fichiers en couches.
+$ docker inspect $(docker compose ps -q db) --format "{{.GraphDriver.Name}} {{json .GraphDriver.Data}}"
+overlayfs null
+$ docker run --rm -v shop_pgdata:/data:ro alpine:3.21.2 ls /data | head -5   (le volume vit dans /var/lib/docker/volumes/shop_pgdata/_data de la VM)
+PG_VERSION base global pg_commit_ts pg_dynshmem 
+
+## init.sql non rejoué
+$ docker compose restart db && docker compose logs db | grep -i -E "initdb|init.sql|Skipping"
+2026-10-29 09:40:57.189 UTC [1] LOG:  database system is ready to accept connections
+PostgreSQL Database directory appears to contain a database; Skipping initialization
+2026-10-29 09:43:04.547 UTC [1] LOG:  database system is ready to accept connections
+
+## Cycle de vie de pgdata — sur une COPIE de la stack : docker compose -p shopcopy -f compose.yml (service db seul)
+$ docker compose -p shopcopy -f compose.yml up -d --wait db
+ Container shopcopy-db-1  Healthy
+$ docker compose -p shopcopy logs db | grep docker-entrypoint-initdb.d   (1er démarrage : volume vide -> init.sql exécuté)
+/usr/local/bin/docker-entrypoint.sh: running /docker-entrypoint-initdb.d/001-init.sql
+$ psql -c "INSERT INTO products(name,price) VALUES (temoin,1)"
+INSERT 0 1
+volumes : shopcopy_pgdata 
+
+### docker compose down
+2 objets supprimés (conteneurs, réseaux)
+volumes : shopcopy_pgdata 
+après up : témoin = 1  -> données conservées
+
+### docker compose rm -sf db
+ Container shopcopy-db-1  Removed
+volumes : shopcopy_pgdata 
+après up : témoin = 1  -> données conservées (rm ne touche pas aux volumes nommés)
+
+### docker volume prune (filtré sur le projet pour ne rien toucher d autre sur la machine)
+$ docker volume prune -f --filter label=com.docker.compose.project=shopcopy
+Total reclaimed space: 0B
+volumes : shopcopy_pgdata 
+=> depuis Docker 23, prune ne supprime que les volumes ANONYMES non utilisés : les volumes nommés survivent
+après up : témoin = 1
+$ docker volume prune -a -f --filter label=com.docker.compose.project=shopcopy   (-a : aussi les volumes nommés inutilisés)
+Deleted Volumes:
+shopcopy_pgdata
+
+volumes : 
+
+### docker compose down -v
+volumes avant : shopcopy_pgdata 
+$ docker compose -p shopcopy down -v
+ Volume shopcopy_pgdata  Removing
+ Volume shopcopy_pgdata  Removed
+volumes après : 
+après up : témoin = 0  -> base réinitialisée par init.sql : DONNÉES PERDUES
+
+## Volume anonyme
+$ docker run -d --name pg-anon -e POSTGRES_PASSWORD=x postgres:16.4-alpine
+$ docker inspect pg-anon --format "{{json .Mounts}}"
+{"Type":"volume","Name":"68c719b79c07a8054bbf0af2a353316e4af1bcf59efa9464f1a47449de4dcc5e","Destination":"/var/lib/postgresql/data"}
+=> volume déclaré par "VOLUME /var/lib/postgresql/data" dans le Dockerfile de l image : nom aléatoire, aucun label compose
+$ docker rm -f pg-anon
+$ docker volume ls -q | grep 68c719b79c07
+68c719b79c07a8054bbf…  -> toujours là, orphelin (dangling)
+$ docker run -d --name pg-anon ... && docker rm -f -v pg-anon
+$ docker volume ls -q | grep 73163b208b48
+(aucun) -> supprimé avec le conteneur
