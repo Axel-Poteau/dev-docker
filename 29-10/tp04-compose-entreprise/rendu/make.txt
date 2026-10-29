@@ -1,0 +1,35 @@
+$ make prod-test
+Smoke test sur http://localhost:8000 (Host: api.localhost)
+  ✔ /ready : {"status":"ready","checks":{"db":"ok","redis":"ok"}}
+  ✔ /products servi depuis Redis (X-Cache: HIT)
+  ✔ commande créée : {"id":1793266850546,"productId":1,"status":"pending"}
+  ✔ commande 3 confirmée par le worker
+OK
+
+$ make prod-down && make up
+ Network shop_back  Removed
+ Container shop-worker-1  Waiting
+ localhost:5000/shop-worker:1.0  Built
+NAME            IMAGE                            COMMAND                  SERVICE   CREATED          STATUS                    PORTS
+shop-api-1      localhost:5000/shopapi:1.0       "/bin/sh -c 'export …"   api       12 seconds ago   Up 5 seconds (healthy)    0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+shop-db-1       postgres:16.4-alpine             "docker-entrypoint.s…"   db        12 seconds ago   Up 11 seconds (healthy)   0.0.0.0:15432->5432/tcp, [::]:15432->5432/tcp
+shop-proxy-1    traefik:v3.1.7                   "/entrypoint.sh trae…"   proxy     12 seconds ago   Up 11 seconds (healthy)   0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp, 0.0.0.0:8000->80/tcp, [::]:8000->80/tcp
+shop-redis-1    redis:7.4-alpine                 "docker-entrypoint.s…"   redis     12 seconds ago   Up 11 seconds (healthy)   
+shop-worker-1   localhost:5000/shop-worker:1.0   "/bin/sh -c 'export …"   worker    12 seconds ago   Up 5 seconds (healthy)    
+
+$ make test
+Smoke test sur http://localhost:8000 (Host: api.localhost)
+  ✔ /ready : {"status":"ready","checks":{"db":"ok","redis":"ok"}}
+  ✔ /products servi depuis Redis (X-Cache: HIT)
+  ✔ commande créée : {"id":1793266868434,"productId":1,"status":"pending"}
+  ✔ commande 4 confirmée par le worker
+OK
+
+$ make migrate M=002-add-sku.sql
+psql:/migrations/002-add-sku.sql:2: NOTICE:  column "sku" of relation "products" already exists, skipping
+ALTER TABLE
+UPDATE 0
+$ make migrate
+usage: make migrate M=<fichier dans db/migrations>
+make: *** [Makefile:43 : migrate] Erreur 2
+exit=2

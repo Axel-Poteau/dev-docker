@@ -1,0 +1,53 @@
+$ docker compose ps
+SERVICE   STATUS                    PORTS
+api       Up 21 seconds (healthy)   0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+db        Up 5 minutes (healthy)    0.0.0.0:15432->5432/tcp, [::]:15432->5432/tcp
+proxy     Up 5 minutes (healthy)    0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp, 0.0.0.0:8000->80/tcp, [::]:8000->80/tcp
+redis     Up 6 minutes (healthy)    
+worker    Up 5 minutes (healthy)    
+
+$ psql -h 127.0.0.1 -p 15432 (port de debug dev)
+3
+$ curl -s localhost:8080/api/http/routers | jq   (dashboard Traefik dev)
+[{"name":"api@docker","rule":"Host(`api.localhost`)","status":"enabled"}]
+
+## Profil tools
+$ docker compose --profile tools up -d --wait adminer
+ Container shop-adminer-1  Healthy
+$ curl -s -H "Host: adminer.localhost" localhost:8000/ | grep -o "<title>.*</title>"
+<title>Login - Adminer
+$ docker compose ps adminer
+adminer Up 5 seconds (healthy)
+
+## Profil ops : migration à usage unique
+$ MIGRATION=002-add-sku.sql docker compose run --rm migrate
+ALTER TABLE
+UPDATE 3
+$ (rejouée : idempotente)
+psql:/migrations/002-add-sku.sql:2: NOTICE:  column "sku" of relation "products" already exists, skipping
+ALTER TABLE
+UPDATE 0
+$ docker compose run --rm migrate   (sans MIGRATION)
+/bin/sh: MIGRATION: variable MIGRATION requise   (exit 2)
+$ psql -c "select id, sku, name from products"
+ id |    sku    |       name        
+----+-----------+-------------------
+  1 | SKU-00001 | Clavier mécanique
+  2 | SKU-00002 | Écran 27"
+  3 | SKU-00003 | Souris sans fil
+(3 rows)
+
+
+## Isolation réseau
+$ docker network inspect shop_back --format "{{.Internal}}"
+true
+$ docker compose exec worker python -c "urlopen(\"https://pypi.org\")"   # back est internal : pas d accès Internet
+urllib.error.URLError: <urlopen error [Errno -3] Temporary failure in name resolution>
+$ docker compose exec api node -e "fetch(\"https://pypi.org\")"   # api est aussi sur front : accès sortant OK
+HTTP 200
+$ docker compose port redis 6379
+no port 6379/tcp for container shop-redis-1: 
+$ docker run --rm --network shop_front redis:7.4-alpine redis-cli -h redis ping   # front ne voit pas redis
+Could not connect to Redis at redis:6379: Name does not resolve
+$ docker run --rm --network shop_back redis:7.4-alpine redis-cli -h redis ping
+PONG

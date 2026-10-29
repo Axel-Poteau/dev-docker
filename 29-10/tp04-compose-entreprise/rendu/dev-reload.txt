@@ -1,0 +1,36 @@
+# Essai 1 : bind mount ./apps/shopapi/src:/app/src:ro + node --watch (compose.override.yml), Docker Desktop Linux
+$ curl -s localhost:3000/health
+{"status":"ok"}
+$ sed -i "s/{ status: 'ok' }/{ status: 'ok', reloaded: true }/" apps/shopapi/src/server.js
+$ docker compose logs --since 8s api | grep -v "request completed"
+$ curl -s localhost:3000/health
+{"status":"ok"}
+=> pas de "Restarting" dans les logs : le partage de fichiers de la VM Docker Desktop ne relaie pas les événements inotify
+   (un fichier remplacé par renommage, comme avec sed -i, n'est même pas visible dans le conteneur ; une écriture sur place l'est, mais sans événement)
+
+# Essai 2 : docker compose watch, action "sync" + node --watch
+3 modifications successives : seule la 1re déclenche "Restarting 'src/server.js'" (node 20 --watch perd le
+fichier quand compose le remplace) -> /health reste {"status":"ok","edit":1}
+
+# Essai 3 : docker compose -f compose.yml -f compose.override.yml -f compose.watch.yml watch  (action "sync+restart")
+$ modification n°1 de /health dans apps/shopapi/src/server.js
+$ curl -s localhost:3000/health
+{"status":"ok","edit":1}
+$ modification n°2 de /health dans apps/shopapi/src/server.js
+$ curl -s localhost:3000/health
+{"status":"ok","edit":2}
+$ modification n°3 de /health dans apps/shopapi/src/server.js
+$ curl -s localhost:3000/health
+{"status":"ok","edit":3}
+$ (fichier restauré) curl -s localhost:3000/health
+{"status":"ok"}
+$ sortie de "docker compose watch"
+Watch enabled
+Syncing service "api" after 1 changes were detected
+service(s) ["api"] restarted
+Syncing service "api" after 1 changes were detected
+service(s) ["api"] restarted
+Syncing service "api" after 1 changes were detected
+service(s) ["api"] restarted
+Syncing service "api" after 1 changes were detected
+service(s) ["api"] restarted

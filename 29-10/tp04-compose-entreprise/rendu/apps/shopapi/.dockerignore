@@ -1,0 +1,6 @@
+# Contexte de build minimal : tout est exclu sauf ce qui est explicitement nécessaire
+*
+!package.json
+!package-lock.json
+!src/
+!test/

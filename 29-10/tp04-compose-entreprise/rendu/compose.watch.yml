@@ -1,0 +1,17 @@
+# Bonus B1 — rechargement via "docker compose watch" au lieu du bind mount
+#   docker compose -f compose.yml -f compose.override.yml -f compose.watch.yml watch
+# sync+restart : les fichiers modifiés sont copiés DANS le conteneur puis le conteneur est redémarré
+#                (node --watch ne suit que le 1er remplacement de fichier : "sync" seul ne suffit pas)
+# rebuild : un changement de dépendances reconstruit l'image et recrée le conteneur
+services:
+  api:
+    volumes: !reset []
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./apps/shopapi/src
+          target: /app/src
+        - action: rebuild
+          path: ./apps/shopapi/package.json
+        - action: rebuild
+          path: ./apps/shopapi/package-lock.json
