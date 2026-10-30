@@ -1,0 +1,22 @@
+# déploiement autorisé : signé par la CI, annotation git_sha conforme
+$ cosign verify --key cosign.pub --insecure-ignore-tlog=true -a git_sha=4c3ddf8 localhost:5000/shopapi:sha-4c3ddf8
+  
+  Verification for localhost:5000/shopapi:sha-4c3ddf8 --
+  The following checks were performed on each of these signatures:
+    - The specified annotations were verified.
+    - The cosign claims were validated
+    - The signatures were verified against the specified public key
+  
+  [{"critical":{"identity":{"docker-reference":"localhost:5000/shopapi"},"image":{"docker-manifest-digest":"sha256:fb46011dc60e…"},"type":"cosign container image signature"},"optional":{"ci":"ci-local","git_sha":"4c3ddf8"}}]
+  → rc=0
+
+# poussée lors du run refusé par la gate (worker vulnérable) : jamais signée → non déployable
+$ cosign verify --key cosign.pub --insecure-ignore-tlog=true localhost:5000/shopapi:sha-8990231
+  Error: no signatures found
+  → rc=10
+
+# signature valide mais pour un autre commit
+$ cosign verify --key cosign.pub --insecure-ignore-tlog=true -a git_sha=deadbee localhost:5000/shopapi:sha-4c3ddf8
+  Error: no matching signatures: missing or incorrect annotation
+  → rc=12
+

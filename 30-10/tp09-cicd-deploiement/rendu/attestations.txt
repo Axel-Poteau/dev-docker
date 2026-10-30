@@ -1,0 +1,16 @@
+$ crane manifest localhost:5000/shopapi:sha-4c3ddf8 | jq   (index multi-arch : 2 images + 2 attestations provenance/SBOM)
+  sha256:c29999233500…  linux/amd64  image
+  sha256:78123dabe82e…  linux/arm64  image
+  sha256:8c32fcf25490…  unknown/unknown  attestation-manifest
+  sha256:4fd4a16033b3…  unknown/unknown  attestation-manifest
+
+$ crane ls localhost:5000/shopapi   (tags + signatures cosign sha256-<digest>.sig)
+  sha-8990231
+  sha-4c3ddf8
+  sha-2fdfd4c
+  sha256-d01cdb29e942defb71ba75504a8b3f567d96d607de11de2c4038f5f8edb7a96c.sig
+  sha256-fb46011dc60e76ae51a0dd041abfc2319c895d9efc5a6f9a25da848e043ac1a6.sig
+
+$ crane manifest localhost:5000/shopapi@sha256:8c32fcf25490… | jq '.layers[].annotations'  (predicates in-toto)
+  https://spdx.dev/Document
+  https://slsa.dev/provenance/v1

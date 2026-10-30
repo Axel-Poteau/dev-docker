@@ -1,0 +1,24 @@
+$ DOCKER_CONTEXT=preprod VERSION=sha-4c3ddf8 docker compose --env-file deploy/env/preprod.env -f compose.yml -f compose.prod.yml up -d --force-recreate api
+ api Pulling 
+ api Pulled 
+ Container shop-api-1  Recreate
+ Container shop-api-2  Recreate
+time="2026-10-30T10:11:03+01:00" level=warning msg="secret file shop_db_password does not exist"
+time="2026-10-30T10:11:03+01:00" level=warning msg="secret file shop_db_password does not exist"
+ Container shop-api-1  Recreated
+ Container shop-api-2  Recreated
+ Container shop-api-2  Starting
+ Container shop-api-2  Started
+ Container shop-api-1  Starting
+ Container shop-api-1  Started
+
+real	0m1,841s
+user	0m0,091s
+sys	0m0,036s
+10:10:57 100 req/s sur http://127.0.0.1:18000/health (Host: api.localhost) pendant 30s
+
+requêtes : 2750   succès : 2210   ÉCHECS : 540
+  HTTP 200 : 2210
+  HTTP 404 : 500
+  HTTP 502 : 40
+  fenêtre d'échec : 6,24 s (du 10:11:03 au 10:11:10)

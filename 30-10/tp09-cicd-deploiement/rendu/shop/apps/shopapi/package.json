@@ -1,6 +1,6 @@
 {
   "name": "shopapi",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "API catalogue produits - formation Docker avancé",
   "main": "src/server.js",
   "scripts": {
