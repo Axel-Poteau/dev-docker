@@ -1,0 +1,51 @@
+# Surcharge DURCIE (TP08) — s'applique par-dessus la prod. Menace réduite indiquée par directive.
+x-hardening: &hardening
+  read_only: true                 # pas de webshell / binaire persistant déposé dans l'image
+  cap_drop: [ALL]                 # aucune capacité noyau (Apache sur 8080, MariaDB en uid 999 : inutiles)
+  security_opt: !override
+    - no-new-privileges:true      # setuid/setgid inopérants
+
+services:
+  proxy:
+    <<: *hardening
+    user: "65534:65534"           # Traefik en nobody (bind :80 possible : ip_unprivileged_port_start=0)
+    deploy:
+      resources:
+        limits: {cpus: "0.50", memory: 128M, pids: 100}
+
+  socket-proxy:
+    <<: *hardening
+    deploy:
+      resources:
+        limits: {cpus: "0.25", memory: 32M, pids: 50}
+
+  app:
+    <<: *hardening
+    tmpfs:
+      # sessions PHP, fichiers uploadés en transit, pid et verrous Apache — rien d'exécutable
+      - /tmp:size=64m,mode=1777,noexec,nosuid,nodev
+      - /var/run/apache2:size=1m,uid=33,gid=33,mode=755,noexec,nosuid,nodev
+      - /var/lock/apache2:size=1m,uid=33,gid=33,mode=755,noexec,nosuid,nodev
+    deploy:
+      replicas: 2
+      resources:
+        limits: {cpus: "1.0", memory: 256M, pids: 200}
+
+  cron:
+    <<: *hardening
+    tmpfs:
+      - /tmp:size=16m,mode=1777,noexec,nosuid,nodev
+    deploy:
+      resources:
+        limits: {cpus: "0.50", memory: 128M, pids: 50}
+
+  # MariaDB directement en uid 999 : l'entrypoint n'a ni chown ni gosu à faire → aucune capacité
+  db:
+    <<: *hardening
+    user: "999:999"
+    tmpfs:
+      - /tmp:size=64m,mode=1777,noexec,nosuid,nodev
+      - /run/mysqld:size=1m,uid=999,gid=999,mode=755,noexec,nosuid,nodev
+    deploy:
+      resources:
+        limits: {cpus: "1.0", memory: 512M, pids: 200}

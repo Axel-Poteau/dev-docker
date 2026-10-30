@@ -1,0 +1,10 @@
+Smoke test GestStock sur http://localhost:8090 (Host: geststock.localhost)
+  ✔ ?health : OK (base joignable)
+  ✔ POST article « smoke-1793353463 » avec photo
+  ✔ photo servie par l'alias /uploads (/uploads/p_6ae466f77d1127.57189783.png, image/png)
+  ✔ code hors public/ non servi (lib/config.php → 404)
+  ✔ article 8 supprimé
+  ✔ log applicatif JSON sur stderr : article ajouté: smoke-1793353463
+  ✔ rapport à la demande : Articles: 5, quantité totale: 520
+  ✔ mail « Rapport stock 2026-10-30 » reçu par Mailpit (1)
+OK

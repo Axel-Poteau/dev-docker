@@ -1,0 +1,37 @@
+# Faux relais SMTP (Mailpit) : capture les mails du rapport. Ajouté en dev (COMPOSE_FILE du .env),
+# en CI et en préprod ; jamais en prod (SMTP_HOST = relais de l'entreprise).
+#   interface : http://mail.localhost:<HTTP_PORT>   API : /api/v1/messages
+services:
+  cron:
+    depends_on:
+      mailpit:
+        condition: service_healthy
+
+  mailpit:
+    image: axllent/mailpit:v1.27.11
+    restart: unless-stopped
+    user: "65534:65534"
+    # outil de test, mais durci comme le reste (audit.sh sans écart en CI/préprod)
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:size=32m,mode=1777,noexec,nosuid,nodev
+    deploy:
+      resources:
+        limits: {cpus: "0.25", memory: 64M, pids: 50}
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+      MP_DATABASE: ""
+    networks: [mail, front]
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.mailpit.rule: Host(`mail.localhost`)
+      traefik.http.routers.mailpit.entrypoints: web
+      traefik.http.services.mailpit.loadbalancer.server.port: "8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3

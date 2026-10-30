@@ -1,0 +1,32 @@
+$ ./scripts/backup.sh
+  [10:49:09] sauvegarde backups/20261030-104904 : 20K, items=9 photos=9
+  backups/20261030-104904
+$ cat backups/20261030-104904/meta.txt
+  date=2026-10-30T10:49:07+01:00
+  image=localhost:5000/geststock:dev
+  items=9
+  photos=9
+
+# sinistre simulé : suppression de toutes les lignes et des photos
+$ DELETE FROM items ; rm /uploads/*
+  articles en base : 0 ; page : GestStock — inventaire (0 articles)
+
+$ FORCE=1 ./scripts/restore.sh backups/20261030-104904
+  [10:49:13] sauvegarde backups/20261030-104904 vérifiée (date=2026-10-30T10:49:07+01:00 items=9 photos=9)
+  [10:49:13] arrêt de app et cron
+  [10:49:23] restauration de la base
+  [10:49:24] restauration des photos (le volume est vidé avant)
+  [10:49:27] redémarrage
+  [10:49:34] restauration terminée : 9 articles
+
+real	0m21,807s
+user	0m0,887s
+sys	0m0,228s
+  page : GestStock — inventaire (9 articles)
+  photo legacy /uploads/p_5a1c2e0f3b7d41.10293847.png : 200 image/png
+
+# sauvegarde altérée → refus
+$ FORCE=1 ./scripts/restore.sh backups/corrompue
+  db.sql.gz: Échec
+  sha256sum: Attention : 1 somme de contrôle ne correspond pas
+  [10:49:34] ERREUR : sommes de contrôle invalides : sauvegarde corrompue

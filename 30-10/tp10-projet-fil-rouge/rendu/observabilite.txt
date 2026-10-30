@@ -1,0 +1,44 @@
+# Loki (collecte Alloy) — logs JSON de l'application, label level extrait
+$ {project="geststock", service="app", level="info"}
+  [geststock-app-1] {"time":"2026-10-30T10:53:33+01:00","level":"info","app":"geststock","msg":"article supprimé: 11"}
+  [geststock-app-1] {"time":"2026-10-30T10:53:33+01:00","level":"info","app":"geststock","msg":"article ajouté: smoke-1793354013 (3)"}
+  [geststock-app-1] {"time":"2026-10-30T10:44:44+01:00","level":"info","app":"geststock","msg":"article supprimé: 9"}
+  [geststock-app-1] {"time":"2026-10-30T10:44:43+01:00","level":"info","app":"geststock","msg":"article ajouté: smoke-1793353483 (3)"}
+$ {project="geststock", service="cron"} |= "job succeeded"
+  time="2026-10-30T11:02:00+01:00" level=info msg="job succeeded" iteration=0 job.command="php /var/www/geststock/bin/rapport.php" job.position=0 job.schedule="* * * * *"
+$ {project="geststock", service="app"} |= "POST / "   (log d'accès Apache, IP client réelle via mod_remoteip)
+  172.26.0.5 - - [30/Oct/2026:10:53:33 +0100] "POST / HTTP/1.1" 200 930 95240 "-" "curl/8.5.0"
+  172.26.0.5 - - [30/Oct/2026:10:44:43 +0100] "POST / HTTP/1.1" 200 733 62925 "-" "curl/8.5.0"
+
+# Prometheus — cibles
+  cadvisor: up
+  geststock-cron: up
+  mariadb: up
+  traefik: up
+# mémoire par conteneur (cAdvisor, cgroup /docker/<id> ; nom résolu via docker ps)
+  geststock-app-1                 7 Mo
+  geststock-app-2                14 Mo
+  geststock-cron-1                0 Mo
+  geststock-db-1                 27 Mo
+  geststock-mailpit-1            11 Mo
+  geststock-mysqld-exporter-1    16 Mo
+  geststock-proxy-1              33 Mo
+  geststock-socket-proxy-1        1 Mo
+$ mysql_up
+  {} = 1
+$ mysql_global_status_threads_connected
+  {} = 1
+$ rate(mysql_global_status_queries[5m])
+  {} = 2.08
+$ supercronic_successful_executions
+$ supercronic_failed_executions
+$ sum by (code) (traefik_service_requests_total{service=~"geststock.*"})
+  {"code":"200"} = 5
+  {"code":"302"} = 1
+  {"code":"404"} = 1
+
+# Grafana : sources et tableau de bord provisionnés
+  datasource Loki (loki) → http://loki:3100
+  datasource Prometheus (prometheus) → http://prometheus:9090
+  dashboard « GestStock » (null) → http://127.0.0.1:3001/dashboards/f/fg2s0y2pfoni8e/geststock
+  dashboard « GestStock » (GestStock) → http://127.0.0.1:3001/d/geststock/geststock

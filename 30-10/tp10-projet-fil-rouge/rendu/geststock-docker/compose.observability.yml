@@ -1,0 +1,50 @@
+# GestStock rejoint l'observabilité (observability/compose.yml doit tourner : réseau externe « observability »)
+#   ajouter « :compose.observability.yml » à COMPOSE_FILE, puis ./scripts/setup-exporter.sh (une fois)
+# Les logs n'ont besoin de rien ici : Alloy lit ceux de tous les conteneurs (stdout/stderr).
+services:
+  proxy:
+    networks:
+      observability:
+        aliases: [geststock-proxy]        # /metrics Traefik sur :8080
+
+  cron:
+    networks:
+      observability:
+        aliases: [geststock-cron]         # /metrics supercronic sur :9746
+
+  # Bonus : métriques MariaDB (connexions, requêtes, InnoDB) ; utilisateur dédié aux droits minimaux
+  mysqld-exporter:
+    image: prom/mysqld-exporter:v0.17.2
+    restart: unless-stopped
+    entrypoint:
+      - /bin/sh
+      - -c
+      - MYSQLD_EXPORTER_PASSWORD="$$(cat /run/secrets/db_exporter_password)" exec /bin/mysqld_exporter --mysqld.address=db:3306 --mysqld.username=exporter
+    user: "65534:65534"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    secrets: [db_exporter_password]
+    networks:
+      back: {}
+      observability:
+        aliases: [geststock-mysqld-exporter]
+    depends_on:
+      db: {condition: service_healthy}
+    deploy:
+      resources:
+        limits: {cpus: "0.25", memory: 64M, pids: 50}
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+
+  ops:
+    secrets: [db_root_password, db_exporter_password]
+
+networks:
+  observability:
+    external: true
+
+secrets:
+  db_exporter_password:
+    file: ${SECRETS_DIR:-./secrets}/db_exporter_password.txt

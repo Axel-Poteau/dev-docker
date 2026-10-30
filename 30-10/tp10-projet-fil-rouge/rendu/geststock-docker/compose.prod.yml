@@ -1,0 +1,41 @@
+# Surcharge PROD : images du registre (jamais de build), 2 réplicas, limites, relais SMTP réel.
+#   docker compose -f compose.yml -f compose.prod.yml -f compose.hardened.yml up -d --wait
+services:
+  proxy:
+    deploy:
+      resources:
+        limits: {cpus: "0.50", memory: 128M}
+
+  socket-proxy:
+    deploy:
+      resources:
+        limits: {cpus: "0.25", memory: 32M}
+
+  app:
+    build: !reset null
+    image: ${REGISTRY:?REGISTRY doit être défini}/geststock:${VERSION:?VERSION doit être défini}
+    pull_policy: missing
+    environment:
+      SMTP_HOST: ${SMTP_HOST:?SMTP_HOST (relais de l'entreprise) doit être défini}
+    deploy:
+      replicas: 2
+      resources:
+        limits: {cpus: "1.0", memory: 256M}
+        reservations: {memory: 64M}
+
+  cron:
+    image: ${REGISTRY:?REGISTRY doit être défini}/geststock:${VERSION:?VERSION doit être défini}
+    pull_policy: missing
+    environment:
+      SMTP_HOST: ${SMTP_HOST:?SMTP_HOST (relais de l'entreprise) doit être défini}
+    depends_on: !override
+      db:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits: {cpus: "0.50", memory: 128M}
+
+  db:
+    deploy:
+      resources:
+        limits: {cpus: "1.0", memory: 512M}

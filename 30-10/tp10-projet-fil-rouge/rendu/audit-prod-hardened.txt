@@ -1,0 +1,65 @@
+geststock-app-1
+  ✔ user   www-data
+  ✔ priv   non privilégié
+  ✔ caps   drop ALL, add []
+  ✔ rootfs read-only
+  ✔ mem    256 Mo
+  ✔ pids   200
+  ✔ nnp    no-new-privileges
+  ✔ sock   pas de socket Docker
+geststock-app-2
+  ✔ user   www-data
+  ✔ priv   non privilégié
+  ✔ caps   drop ALL, add []
+  ✔ rootfs read-only
+  ✔ mem    256 Mo
+  ✔ pids   200
+  ✔ nnp    no-new-privileges
+  ✔ sock   pas de socket Docker
+geststock-cron-1
+  ✔ user   www-data
+  ✔ priv   non privilégié
+  ✔ caps   drop ALL, add []
+  ✔ rootfs read-only
+  ✔ mem    128 Mo
+  ✔ pids   50
+  ✔ nnp    no-new-privileges
+  ✔ sock   pas de socket Docker
+geststock-db-1
+  ✔ user   999:999
+  ✔ priv   non privilégié
+  ✔ caps   drop ALL, add []
+  ✔ rootfs read-only
+  ✔ mem    512 Mo
+  ✔ pids   200
+  ✔ nnp    no-new-privileges
+  ✔ sock   pas de socket Docker
+geststock-mailpit-1
+  ✔ user   65534:65534
+  ✔ priv   non privilégié
+  ✔ caps   drop ALL, add []
+  ✔ rootfs read-only
+  ✔ mem    64 Mo
+  ✔ pids   50
+  ✔ nnp    no-new-privileges
+  ✔ sock   pas de socket Docker
+geststock-proxy-1
+  ✔ user   65534:65534
+  ✔ priv   non privilégié
+  ✔ caps   drop ALL, add []
+  ✔ rootfs read-only
+  ✔ mem    128 Mo
+  ✔ pids   100
+  ✔ nnp    no-new-privileges
+  ✔ sock   pas de socket Docker
+geststock-socket-proxy-1
+  ✔ user   65534:0
+  ✔ priv   non privilégié
+  ✔ caps   drop ALL, add []
+  ✔ rootfs read-only
+  ✔ mem    32 Mo
+  ✔ pids   50
+  ✔ nnp    no-new-privileges
+  ~ sock   socket Docker montée (exception audit.allow)
+
+aucun écart sur 7 conteneur(s)

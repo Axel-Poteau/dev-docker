@@ -1,0 +1,27 @@
+$ ./scripts/migrate-legacy.sh legacy-sample/out/geststock-dump.sql legacy-sample/out/uploads.tar.gz
+[10:48:12] sommes de contrôle OK
+[10:48:12] dump : MySQL dump 10.19  Distrib 10.3.39-MariaDB, for debian-linux-gnu (x86_64) — 9 articles
+[10:48:12] sauvegarde de sécurité avant reprise
+[10:48:16] arrêt de app et cron
+[10:48:26] import du dump
+[10:48:27] photos → volume uploads
+  fichiers dans le volume : 9
+[10:48:30] contrôle : 9 articles importés
+[10:48:32] contrôle : toutes les photos référencées sont présentes
+[10:48:32] redémarrage de app et cron
+[10:48:39] reprise terminée
+(rc=0)
+$ curl -H "Host: geststock.localhost" http://localhost:8090/   (après reprise)
+   GestStock — inventaire (9 articles) 
+   10 Adaptateur USB-C → HDMI 0 
+   9 Câble RJ45 cat6 5m 140 
+   8 Station d&#039;accueil Thunderbolt 1 
+   7 Souris ergonomique 4 
+   6 Clavier AZERTY 25 
+   5 Écran 24&quot; Dell 7 
+   3 Dock USB-C 12 
+   2 Câble HDMI 2m 3 
+   1 Visserie M4 500 
+$ curl -I /uploads/p_5a1c2e0f3b7d41.10293847.png
+  HTTP/1.1 200 OK
+  Content-Type: image/png

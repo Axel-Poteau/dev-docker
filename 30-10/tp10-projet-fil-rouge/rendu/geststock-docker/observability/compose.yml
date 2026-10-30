@@ -1,0 +1,138 @@
+# Observabilité (remplace le TP07 non rendu) : logs → Loki (via Alloy), métriques → Prometheus, Grafana.
+#   docker compose -f observability/compose.yml up -d --wait
+#   la stack applicative la rejoint avec compose.observability.yml (réseau « observability »)
+name: observability
+
+x-defaults: &defaults
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: {max-size: "10m", max-file: "3"}
+  security_opt: [no-new-privileges:true]
+  cap_drop: [ALL]
+
+services:
+  loki:
+    <<: *defaults
+    image: grafana/loki:3.5.5
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    read_only: true
+    volumes:
+      - loki-data:/loki
+    networks: [observability]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3100/ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+    deploy:
+      resources:
+        limits: {memory: 256M, pids: 200}
+
+  # collecte des logs de tous les conteneurs (API Docker /containers/<id>/logs) → Loki
+  alloy:
+    <<: *defaults
+    image: grafana/alloy:v1.10.2
+    command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "--storage.path=/var/lib/alloy/data", "/etc/alloy/config.alloy"]
+    user: "473:473"     # utilisateur alloy de l'image (propriétaire de /var/lib/alloy)
+    group_add: ["0"]    # + gid 0 : lecture de la socket (root:root 660)
+    read_only: true
+    volumes:
+      - ./alloy.alloy:/etc/alloy/config.alloy:ro
+      - alloy-data:/var/lib/alloy/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      audit.allow: sock   # le proxy de socket filtré refuse /logs ; exception documentée
+    networks: [observability]
+    depends_on:
+      loki: {condition: service_healthy}
+    deploy:
+      resources:
+        limits: {memory: 256M, pids: 200}
+
+  prometheus:
+    <<: *defaults
+    image: prom/prometheus:v3.5.0
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus", "--storage.tsdb.retention.time=15d"]
+    read_only: true
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks: [observability]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9090/-/ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits: {memory: 512M, pids: 200}
+
+  # métriques par conteneur (CPU, mémoire, réseau) : lit les cgroups de l'hôte → root, exception assumée
+  cadvisor:
+    restart: unless-stopped
+    image: gcr.io/cadvisor/cadvisor:v0.52.1
+    # Docker Desktop utilise le « containerd image store » : la fabrique docker de cAdvisor ne sait pas
+    # l'exploiter (« failed to identify the read-write layer ID ») : on la neutralise (endpoint invalide) et la
+    # fabrique « raw » publie les cgroups /docker/<id>, sans labels.
+    # Sur un serveur Linux (stockage overlay2), remettre --docker_only=true pour avoir les labels compose.
+    command: ["--docker_only=false", "--raw_cgroup_prefix_whitelist=/docker/", "--docker=unix:///nonexistent.sock", "--containerd=/nonexistent.sock", "--housekeeping_interval=15s", "--store_container_labels=false", "--whitelisted_container_labels=com.docker.compose.project,com.docker.compose.service"]
+    privileged: true
+    cgroup: host        # sinon (cgroupns privé, défaut du daemon) cAdvisor ne voit que son propre cgroup
+    devices: ["/dev/kmsg"]
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks: [observability]
+    labels:
+      audit.allow: user,priv,caps,rootfs,nnp,sock
+    deploy:
+      resources:
+        limits: {memory: 256M}
+
+  grafana:
+    <<: *defaults
+    image: grafana/grafana:12.1.1
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    secrets: [grafana_admin_password]
+    read_only: true
+    tmpfs: [/tmp]
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3001}:3000"
+    networks: [observability]
+    depends_on:
+      loki: {condition: service_healthy}
+      prometheus: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits: {memory: 256M, pids: 200}
+
+networks:
+  observability:
+    name: observability
+
+volumes:
+  loki-data:
+  alloy-data:
+  prometheus-data:
+  grafana-data:
+
+secrets:
+  grafana_admin_password:
+    file: ../secrets/grafana_admin_password.txt

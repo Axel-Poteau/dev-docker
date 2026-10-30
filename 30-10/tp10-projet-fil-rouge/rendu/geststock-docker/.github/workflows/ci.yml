@@ -1,0 +1,150 @@
+# Pipeline GestStock (rejoué en local par ci-local.sh) — même structure que le TP09 :
+#   PR   : lint (hadolint, shellcheck, compose config) → étape test → build → intégration (stack éphémère)
+#   main : + push sha-<sha> GHCR, trivy bloquant, cosign keyless → rolling update préprod
+#   v*   : tags semver → rolling update prod après approbation (environment « production »)
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/geststock
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hadolint/hadolint-action@v3.1.0
+        with: {dockerfile: Dockerfile, failure-threshold: warning}
+      - name: shellcheck
+        run: shellcheck -S warning -x ci-local.sh scripts/*.sh deploy/*.sh legacy-sample/*.sh
+      - name: docker compose config
+        env: {REGISTRY: ghcr.io/x, VERSION: ci, SMTP_HOST: relay}
+        run: |
+          for f in compose.yml:compose.override.yml:compose.mailpit.yml compose.yml:compose.prod.yml:compose.hardened.yml; do
+            COMPOSE_FILE=$f docker compose --env-file .env.example config -q
+          done
+
+  build:
+    needs: lint
+    runs-on: ubuntu-24.04
+    permissions: {contents: read, packages: write, id-token: write}
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=sha,prefix=sha-,format=short
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+      - name: Étape test (php -l, apachectl -t)
+        uses: docker/build-push-action@v6
+        with: {context: ., target: test, cache-from: type=gha}
+      - name: Build amd64 pour l'intégration
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: localhost/geststock:ci
+          build-args: |
+            VERSION=${{ steps.meta.outputs.version }}
+            GIT_SHA=${{ github.sha }}
+          cache-from: type=gha
+      - name: Intégration (stack prod + durcie éphémère, smoke test, audit)
+        env:
+          COMPOSE_PROJECT_NAME: geststock-ci
+          COMPOSE_FILE: compose.yml:compose.prod.yml:compose.hardened.yml:compose.mailpit.yml
+          REGISTRY: localhost
+          VERSION: ci
+          SMTP_HOST: mailpit
+          HTTP_PORT: "18090"
+          SECRETS_DIR: ${{ runner.temp }}/secrets
+        run: |
+          mkdir -p "$SECRETS_DIR"
+          for s in db_password db_root_password; do openssl rand -hex 24 > "$SECRETS_DIR/$s.txt"; done
+          chmod 644 "$SECRETS_DIR"/*.txt
+          docker compose up -d --wait
+          BASE_URL=http://localhost:18090 COMPOSE="docker compose" ./scripts/smoke-test.sh
+          ./scripts/audit.sh --filter label=com.docker.compose.project=geststock-ci
+      - name: Logs en cas d'échec
+        if: failure()
+        run: docker compose -p geststock-ci logs --tail 100
+      - name: Nettoyage
+        if: always()
+        run: docker compose -p geststock-ci down -v || true
+      - uses: docker/login-action@v3
+        if: github.event_name == 'push'
+        with: {registry: ghcr.io, username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}"}
+      - name: Build multi-arch + push
+        id: push
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ steps.meta.outputs.version }}
+            GIT_SHA=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: mode=max
+          sbom: true
+      - name: Trivy bloquant
+        if: github.event_name == 'push'
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.IMAGE }}@${{ steps.push.outputs.digest }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - uses: sigstore/cosign-installer@v3
+        if: github.event_name == 'push'
+      - name: Signature keyless
+        if: github.event_name == 'push'
+        run: cosign sign --yes -a git_sha=${{ github.sha }} "$IMAGE@${{ steps.push.outputs.digest }}"
+
+  deploy:
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    environment: ${{ startsWith(github.ref, 'refs/tags/v') && 'production' || 'preprod' }}
+    concurrency: {group: "deploy-${{ github.ref_type }}", cancel-in-progress: false}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: sigstore/cosign-installer@v3
+      - uses: docker/login-action@v3
+        with: {registry: ghcr.io, username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}"}
+      - name: Vérification de la signature
+        run: |
+          cosign verify "$IMAGE@${{ needs.build.outputs.digest }}" -a git_sha=${{ github.sha }} \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --certificate-identity-regexp "^https://github.com/${GITHUB_REPOSITORY}/.github/workflows/ci.yml@refs/(heads/main|tags/v.*)$"
+      - name: Contexte SSH vers le serveur
+        run: |
+          install -m 700 -d ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+          echo "${{ vars.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          docker context create target --docker "host=ssh://${{ vars.DEPLOY_TARGET }}"
+      - name: Rolling update
+        env:
+          DOCKER_CONTEXT: target
+          REGISTRY: ghcr.io/${{ github.repository_owner }}
+          SMTP_HOST: ${{ vars.SMTP_HOST }}
+          SECRETS_DIR: /srv/geststock/secrets
+        run: VERSION="sha-${GITHUB_SHA::7}" ./deploy/rolling-update.sh

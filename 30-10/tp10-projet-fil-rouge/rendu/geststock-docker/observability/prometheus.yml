@@ -1,0 +1,24 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]
+    # séries par conteneur uniquement (cgroups /docker/<id>)
+    metric_relabel_configs:
+      - source_labels: [id]
+        regex: "/docker/.+"
+        action: keep
+
+  - job_name: mariadb
+    static_configs:
+      - targets: ["geststock-mysqld-exporter:9104"]
+
+  - job_name: geststock-cron      # supercronic : exécutions, succès/échecs du rapport
+    static_configs:
+      - targets: ["geststock-cron:9746"]
+
+  - job_name: traefik
+    static_configs:
+      - targets: ["geststock-proxy:8080"]

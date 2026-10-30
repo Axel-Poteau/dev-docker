@@ -1,0 +1,5 @@
+# seuls app/ et docker/ entrent dans le contexte de build
+*
+!app/
+!docker/
+app/**/*.md

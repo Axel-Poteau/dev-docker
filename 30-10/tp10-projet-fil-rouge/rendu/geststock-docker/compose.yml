@@ -1,0 +1,198 @@
+# GestStock — fichier de BASE commun à tous les environnements.
+#   dev  : docker compose up -d --wait                          (+ compose.override.yml automatique)
+#   prod : docker compose -f compose.yml -f compose.prod.yml -f compose.hardened.yml up -d --wait
+name: geststock
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-defaults: &defaults
+  restart: unless-stopped
+  logging: *logging
+
+x-app-env: &app-env
+  DB_HOST: db
+  DB_NAME: geststock
+  DB_USER: geststock
+  DB_PASS_FILE: /run/secrets/db_password
+  UPLOAD_DIR: /var/www/uploads
+  SMTP_HOST: ${SMTP_HOST:-mailpit}
+  SMTP_PORT: ${SMTP_PORT:-1025}
+  SMTP_FROM: ${SMTP_FROM:-geststock@shop.example}
+  REPORT_TO: ${REPORT_TO:-direction@shop.example}
+
+services:
+  # ---- Entrée HTTP --------------------------------------------------------------------------------
+  proxy:
+    <<: *defaults
+    image: traefik:v3.1.7
+    ports:
+      - "${HTTP_PORT:-8090}:80"
+    environment:
+      TRAEFIK_PROVIDERS_DOCKER: "true"
+      TRAEFIK_PROVIDERS_DOCKER_ENDPOINT: tcp://socket-proxy:2375
+      TRAEFIK_PROVIDERS_DOCKER_EXPOSEDBYDEFAULT: "false"
+      TRAEFIK_PROVIDERS_DOCKER_NETWORK: ${COMPOSE_PROJECT_NAME:-geststock}_front
+      # ne route que les conteneurs de CE projet (la CI lance une 2e instance sur le même hôte)
+      TRAEFIK_PROVIDERS_DOCKER_CONSTRAINTS: Label(`com.docker.compose.project`, `${COMPOSE_PROJECT_NAME:-geststock}`)
+      TRAEFIK_ENTRYPOINTS_WEB_ADDRESS: ":80"
+      # photos jusqu'à 20 Mo (upload_max_filesize) : pas de coupure côté proxy
+      TRAEFIK_ENTRYPOINTS_WEB_TRANSPORT_RESPONDINGTIMEOUTS_READTIMEOUT: 120s
+      TRAEFIK_PING: "true"
+      TRAEFIK_ACCESSLOG: "true"
+      TRAEFIK_ACCESSLOG_FORMAT: json
+      TRAEFIK_METRICS_PROMETHEUS: "true"
+      TRAEFIK_LOG_LEVEL: INFO
+    networks: [front, socket]
+    depends_on:
+      socket-proxy:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # Traefik ne voit pas la socket Docker : API filtrée en lecture seule (TP08)
+  socket-proxy:
+    <<: *defaults
+    image: tecnativa/docker-socket-proxy:0.3.0
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        sed -e 's/$${BIND_CONFIG}/:2375/' \
+            -e '/http-request deny unless METH_GET/a\    http-request deny if { path,url_dec -m reg -i ^(/v[\\d\\.]+)?/containers/ } !{ path,url_dec -m reg -i ^(/v[\\d\\.]+)?/containers/([a-zA-Z0-9_.-]+/)?json$$ }' \
+            /usr/local/etc/haproxy/haproxy.cfg.template > /tmp/haproxy.cfg
+        exec haproxy -W -db -f /tmp/haproxy.cfg
+    command: []
+    user: "65534:0"             # gid 0 : la socket est root:root 660
+    tmpfs:                      # config générée et pidfile (le reste du système de fichiers est en lecture seule en prod)
+      - /tmp:size=1m,mode=1777,noexec,nosuid,nodev
+      - /run:size=1m,mode=1777,noexec,nosuid,nodev
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment: {CONTAINERS: 1, EVENTS: 1, VERSION: 1, PING: 1, POST: 0, LOG_LEVEL: warning}   # une ligne par requête en info : bruit
+    networks: [socket]
+    labels:
+      audit.allow: sock
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:2375/_ping | grep -q OK"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ---- Application --------------------------------------------------------------------------------
+  app:
+    <<: *defaults
+    build:
+      context: .
+      args:
+        VERSION: ${VERSION:-dev}
+        GIT_SHA: ${GIT_SHA:-unknown}
+    image: ${REGISTRY:-localhost:5000}/geststock:${VERSION:-dev}
+    environment: *app-env
+    secrets: [db_password]
+    volumes:
+      - uploads:/var/www/uploads
+    networks: [front, back]
+    depends_on:
+      db:
+        condition: service_healthy
+    stop_grace_period: 20s
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.geststock.rule: Host(`${APP_HOST:-geststock.localhost}`)
+      traefik.http.routers.geststock.entrypoints: web
+      traefik.http.routers.geststock.middlewares: geststock-retry
+      traefik.http.middlewares.geststock-retry.retry.attempts: "3"
+      traefik.http.services.geststock.loadbalancer.server.port: "8080"
+
+  # Rapport quotidien : même image, supercronic à la place d'Apache (cf. RUNBOOK.md)
+  #   test à la demande : docker compose exec cron php bin/rapport.php   (ou make rapport)
+  cron:
+    <<: *defaults
+    image: ${REGISTRY:-localhost:5000}/geststock:${VERSION:-dev}
+    # horaire paramétrable : RAPPORT_SCHEDULE="* * * * *" docker compose up -d cron  → test du vrai planificateur
+    command:
+      - /bin/sh
+      - -c
+      - echo "$${RAPPORT_SCHEDULE} php /var/www/geststock/bin/rapport.php" > /tmp/crontab
+        && exec supercronic -passthrough-logs -prometheus-listen-address 0.0.0.0:9746 /tmp/crontab
+    # l'image hérite de STOPSIGNAL SIGWINCH (arrêt gracieux d'Apache), que supercronic ignore :
+    # sans ceci, chaque arrêt attend 10 s puis SIGKILL (exit 137), même en plein rapport
+    stop_signal: SIGTERM
+    stop_grace_period: 60s   # laisse finir un rapport en cours
+    environment:
+      <<: *app-env
+      RAPPORT_SCHEDULE: ${RAPPORT_SCHEDULE:-0 6 * * *}   # 6h, comme /etc/cron.d/geststock du legacy
+    secrets: [db_password]
+    networks: [back, mail]
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_started   # l'image est construite par le service app
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "--max-time", "2", "http://127.0.0.1:9746/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # ---- Données ------------------------------------------------------------------------------------
+  db:
+    <<: *defaults
+    image: mariadb:11.4.13
+    environment:
+      MARIADB_DATABASE: geststock
+      MARIADB_USER: geststock
+      MARIADB_PASSWORD_FILE: /run/secrets/db_password
+      MARIADB_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
+      MARIADB_AUTO_UPGRADE: "1"      # mysql_upgrade automatique après un import depuis une version plus ancienne
+    secrets: [db_password, db_root_password]
+    volumes:
+      - dbdata:/var/lib/mysql
+      - ./app/sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    networks: [back]
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ---- Outils à la demande ------------------------------------------------------------------------
+  # conteneur jetable des scripts backup.sh / restore.sh / migrate-legacy.sh (client MariaDB, volumes)
+  ops:
+    profiles: ["ops"]
+    image: mariadb:11.4.13
+    restart: "no"
+    logging: *logging
+    entrypoint: ["/bin/bash", "-c"]
+    secrets: [db_root_password]
+    volumes:
+      - uploads:/uploads
+      - ./backups:/backups
+    networks: [back]
+
+networks:
+  front: {}
+  back:
+    internal: true    # db injoignable depuis l'hôte et Internet
+  socket:
+    internal: true
+  mail: {}            # sortie SMTP du cron (relais de l'entreprise en prod, Mailpit en dev)
+
+volumes:
+  dbdata:
+  uploads:
+
+secrets:
+  db_password:
+    file: ${SECRETS_DIR:-./secrets}/db_password.txt
+  db_root_password:
+    file: ${SECRETS_DIR:-./secrets}/db_root_password.txt

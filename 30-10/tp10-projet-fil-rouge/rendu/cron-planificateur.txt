@@ -1,0 +1,36 @@
+$ RAPPORT_SCHEDULE="* * * * *" docker compose up -d --wait cron     # test du planificateur réel, sans attendre 6 h
+$ docker compose exec cron cat /tmp/crontab
+  * * * * * php /var/www/geststock/bin/rapport.php
+$ docker compose logs cron
+  {"time":"2026-10-30T11:02:00+01:00","level":"info","app":"geststock","msg":"rapport généré"}
+  Articles: 9, quantité totale: 692
+  Stock bas:
+   - Adaptateur USB-C → HDMI: 0
+   - Station d'accueil Thunderbolt: 1
+   - Câble HDMI 2m: 3
+   - Souris ergonomique: 4
+  time="2026-10-30T11:02:00+01:00" level=info msg="job succeeded" iteration=0 job.command="php /var/www/geststock/bin/rapport.php" job.position=0 job.schedule="* * * * *"
+$ curl mail.localhost/api/v1/messages   (avant : 2)
+  total : 3
+  dernier : Rapport stock 2026-10-30 → direction@shop.example (2026-10-30T10:02:00.137Z)
+  corps :
+    Articles: 9, quantitÃ© totale: 692
+    Stock bas:
+     - Adaptateur USB-C â†’ HDMI: 0
+     - Station d'accueil Thunderbolt: 1
+     - CÃ¢ble HDMI 2m: 3
+     - Souris ergonomique: 4
+    
+    
+$ promql: supercronic_successful_executions
+  php /var/www/geststock/bin/rapport.php = 1
+$ logcli query '{project="geststock", service="cron", level="info"}'
+  {"time":"2026-10-30T11:02:00+01:00","level":"info","app":"geststock","msg":"rapport généré"}
+
+
+# après correctif (en-têtes MIME UTF-8 ajoutés dans rapport.php), rapport à la demande : docker compose exec cron php bin/rapport.php
+  Content-Type: text/plain; charset=UTF-8
+    Articles: 9, quantité totale: 692
+    Stock bas:
+     - Adaptateur USB-C → HDMI: 0
+     - Station d'accueil Thunderbolt: 1

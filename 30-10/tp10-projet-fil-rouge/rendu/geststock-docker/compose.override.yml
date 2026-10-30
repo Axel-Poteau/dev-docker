@@ -1,0 +1,14 @@
+# Surcharge DEV — appliquée automatiquement par « docker compose up »
+services:
+  proxy:
+    environment:
+      TRAEFIK_API_DASHBOARD: "true"
+      TRAEFIK_API_INSECURE: "true"
+    ports:
+      - "127.0.0.1:${TRAEFIK_DASHBOARD_PORT:-8091}:8080"
+
+  app:
+    # code monté en lecture seule : modification visible sans rebuild (opcache revalide en dev)
+    volumes:
+      - ./app:/var/www/geststock:ro
+      - ./docker/php-dev.ini:/usr/local/etc/php/conf.d/zz-dev.ini:ro
