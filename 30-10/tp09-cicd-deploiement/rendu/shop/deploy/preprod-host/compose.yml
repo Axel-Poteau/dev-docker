@@ -1,0 +1,24 @@
+# Hôte preprod de TP : ./setup.sh (génère la clé SSH, démarre l'hôte, crée le contexte docker "preprod")
+name: preprod-host
+services:
+  preprod:
+    build: .
+    image: shop/preprod-host:lab
+    hostname: preprod
+    privileged: true          # exigé par DinD : c'est une « VM », pas un conteneur applicatif
+    environment:
+      DOCKER_TLS_CERTDIR: ""  # socket unix uniquement : l'accès distant passe par SSH
+    ports:
+      - "127.0.0.1:2222:22"
+      - "127.0.0.1:18000:80"  # Traefik de la stack déployée
+    extra_hosts:
+      - "registry.local:host-gateway"   # registre du TP03, publié sur l'hôte
+    volumes:
+      - preprod-docker:/var/lib/docker
+      - preprod-srv:/srv/shop
+      - ../../.ci/ssh/id_ed25519.pub:/keys/authorized_keys:ro
+      # le moteur refuse « :5000 » dans une cible de montage : l'entrypoint copie la CA dans certs.d
+      - ${REGISTRY_CA:-../../../../../../26-10/tp03-registry-supply-chain/rendu/registry/certs/ca.crt}:/keys/registry-ca.crt:ro
+volumes:
+  preprod-docker:
+  preprod-srv:

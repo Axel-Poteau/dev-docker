@@ -1,0 +1,39 @@
+événement=main ref=– sha=8990231 tags=sha-8990231 plateformes=linux/amd64,linux/arm64
+
+▶ lint : hadolint + docker compose config
+  ✔ hadolint apps/shopapi/Dockerfile
+  ✔ hadolint apps/shop-worker/Dockerfile
+  ✔ compose (dev) valide
+  ✔ compose (prod) valide
+
+▶ test : build de l'étape test (lint + tests unitaires dans le Dockerfile)
+  ✔ tests api
+  ✔ tests worker
+
+▶ build + push multi-arch, provenance + SBOM
+  ✔ localhost:5000/shopapi:{sha-8990231} @ sha256:eaf580bfa2c3…
+  ✔ localhost:5000/shop-worker:{sha-8990231} @ sha256:ae47fe0702dc…
+
+▶ release gate (labels OCI, non-root, HEALTHCHECK, trivy HIGH/CRITICAL corrigeables, secrets)
+  ✔ gate shopapi : ACCEPTÉ
+    
+    == 1. Labels OCI
+      ✔ org.opencontainers.image.version=sha-8990231
+      ✔ org.opencontainers.image.revision=8990231
+      ✔ org.opencontainers.image.source=https://github.com/shop-sas/shop
+    
+    == 2. Utilisateur non-root
+      ✔ USER=worker
+    
+    == 3. HEALTHCHECK
+      ✔ HEALTHCHECK ["CMD","python","-c","import urllib.request,os; urllib.request.urlopen
+    
+    == 4. Vulnérabilités HIGH,CRITICAL corrigeables
+      ✘ CVE HIGH,CRITICAL corrigeables détectées :
+          Total: 54 (HIGH: 47, CRITICAL: 7)
+    
+    == 5. Secrets
+      ✔ aucun secret détecté
+    
+    REFUSÉ : 1 contrôle(s) en échec pour localhost:5000/shop-worker@sha256:ae47fe0702dcd6c42b06be9a526a3c23bbd19fd3b082f9a9b4adddca88432c07
+  ✘ gate shop-worker : REFUSÉ (pipeline arrêté, rien n'est déployé)

@@ -1,0 +1,2 @@
+# Règles hadolint du dépôt : lint bloquant en CI dès le niveau warning
+failure-threshold: warning

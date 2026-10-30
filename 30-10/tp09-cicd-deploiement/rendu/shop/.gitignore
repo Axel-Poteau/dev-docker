@@ -1,0 +1,6 @@
+.env
+.ci/
+secrets/*
+!secrets/.gitkeep
+apps/shop-worker/pip.conf
+backups/

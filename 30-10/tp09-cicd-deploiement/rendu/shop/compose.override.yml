@@ -1,0 +1,36 @@
+# Surcharge DEV — appliquée automatiquement par "docker compose up" (pas en prod : -f explicites)
+services:
+  proxy:
+    environment:
+      # dashboard Traefik sur http://localhost:8080 (jamais en prod)
+      TRAEFIK_API_DASHBOARD: "true"
+      TRAEFIK_API_INSECURE: "true"
+      TRAEFIK_LOG_LEVEL: DEBUG
+    ports:
+      - "8080:8080"
+
+  api:
+    # code source monté en lecture seule + rechargement à chaud
+    command: ["node", "--watch", "src/server.js"]
+    environment:
+      LOG_LEVEL: debug
+      NODE_ENV: development
+    volumes:
+      - ./apps/shopapi/src:/app/src:ro
+    ports:
+      - "3000:3000"
+
+  worker:
+    environment:
+      LOG_LEVEL: DEBUG
+
+  db:
+    # "back" est internal : un port publié n'y est pas joignable, on rattache la base à un réseau de debug
+    networks:
+      - back
+      - debug
+    ports:
+      - "${DB_DEBUG_PORT:-5432}:5432"
+
+networks:
+  debug: {}
