@@ -1,0 +1,65 @@
+# v1 (sans drain, sha-959964c) : voir rolling.txt → 63 échecs / 5 070
+
+$ FORCE=1 VERSION=sha-07adf76 ./deploy/rolling-update.sh     # redémarrage progressif, avec drain
+[11:20:21] projet=geststock version=sha-07adf76 réplicas=2
+[11:20:26] nouveau réplica geststock-app-7 : attente healthy…
+[11:20:31] geststock-app-7 healthy ; prise en compte par Traefik (3s)
+[11:20:35] drain de geststock-app-5 (4s)
+[11:20:39] arrêt gracieux de geststock-app-5
+[11:20:42] nouveau réplica geststock-app-8 : attente healthy…
+[11:20:48] geststock-app-8 healthy ; prise en compte par Traefik (3s)
+[11:20:51] drain de geststock-app-6 (4s)
+[11:20:55] arrêt gracieux de geststock-app-6
+[11:20:58] cron (rapport en cours terminé avant arrêt : SIGTERM, 60 s)
+geststock-app-7	localhost:5000/geststock:sha-07adf76	Up 34 seconds (healthy)
+geststock-app-8	localhost:5000/geststock:sha-07adf76	Up 18 seconds (healthy)
+geststock-cron-1	localhost:5000/geststock:sha-07adf76	Up 56 seconds (healthy)
+[11:21:00] terminé en 39s
+11:20:18 100 req/s sur http://127.0.0.1:8090/?health (Host: geststock.localhost) pendant 60s
+
+requêtes : 5450   succès : 5357   ÉCHECS : 93
+  HTTP 200 : 5357
+  HTTP 503 : 93
+  fenêtre d'échec : 18,23 s (du 11:20:35 au 11:20:53)
+
+# ↑ mesure sur ?health = la sonde de drain elle-même (503 voulus pendant ≤ 2 s par réplica) ; ↓ mesure sur la page /
+
+$ FORCE=1 VERSION=sha-07adf76 ./deploy/rolling-update.sh   (mesure sur / : la page d'inventaire, pas la sonde)
+[11:21:34] projet=geststock version=sha-07adf76 réplicas=2
+[11:21:38] nouveau réplica geststock-app-9 : attente healthy…
+[11:21:43] geststock-app-9 healthy ; prise en compte par Traefik (3s)
+[11:21:47] drain de geststock-app-8 (4s)
+[11:21:51] arrêt gracieux de geststock-app-8
+[11:22:01] nouveau réplica geststock-app-10 : attente healthy…
+[11:22:06] geststock-app-10 healthy ; prise en compte par Traefik (3s)
+[11:22:09] drain de geststock-app-7 (4s)
+[11:22:13] arrêt gracieux de geststock-app-7
+[11:22:18] cron (rapport en cours terminé avant arrêt : SIGTERM, 60 s)
+geststock-app-10	localhost:5000/geststock:sha-07adf76	Up 21 seconds (healthy)
+geststock-app-9	localhost:5000/geststock:sha-07adf76	Up 43 seconds (healthy)
+geststock-cron-1	localhost:5000/geststock:sha-07adf76	Up 2 minutes (healthy)
+[11:22:21] terminé en 47s
+11:21:31 100 req/s sur http://127.0.0.1:8090/ (Host: geststock.localhost) pendant 60s
+
+requêtes : 5490   succès : 5489   ÉCHECS : 1
+  HTTP 000 (connexion/timeout) : 1
+  HTTP 200 : 5489
+  fenêtre d'échec : 0,00 s (du 11:22:19 au 11:22:19)
+
+# 2e passage, même commande
+$ FORCE=1 VERSION=sha-07adf76 ./deploy/rolling-update.sh
+[11:22:45] projet=geststock version=sha-07adf76 réplicas=2
+[11:22:49] nouveau réplica geststock-app-11 : attente healthy…
+[11:22:54] geststock-app-11 healthy ; prise en compte par Traefik (3s)
+[11:22:58] drain de geststock-app-9 (4s)
+[11:23:02] arrêt gracieux de geststock-app-9
+[11:23:11] nouveau réplica geststock-app-12 : attente healthy…
+[11:23:16] geststock-app-12 healthy ; prise en compte par Traefik (3s)
+[11:23:20] drain de geststock-app-10 (4s)
+[11:23:24] arrêt gracieux de geststock-app-10
+[11:23:29] cron (rapport en cours terminé avant arrêt : SIGTERM, 60 s)
+[11:23:30] terminé en 45s
+11:22:42 100 req/s sur http://127.0.0.1:8090/ (Host: geststock.localhost) pendant 60s
+
+requêtes : 5500   succès : 5500   ÉCHECS : 0
+  HTTP 200 : 5500

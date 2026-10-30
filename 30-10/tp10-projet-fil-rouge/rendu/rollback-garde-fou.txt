@@ -1,0 +1,9 @@
+# rollback « image seule » vers sha-959964c (compose courant) : labels identiques → autorisé, mais l'image
+# ancienne n'a pas la règle de drain : son arrêt ultérieur ne serait plus sans interruption
+$ git checkout 959964c -- compose.yml && VERSION=sha-959964c ./deploy/rolling-update.sh   # rollback complet (code + compose)
+[11:23:59] projet=geststock version=sha-959964c réplicas=2
+[11:24:00] REFUS : labels Traefik modifiés (cohabitation impossible sans coupure) :
+    <   "traefik.http.services.geststock.loadbalancer.healthcheck.interval": "2s",
+    <   "traefik.http.services.geststock.loadbalancer.healthcheck.path": "/?health",
+    <   "traefik.http.services.geststock.loadbalancer.healthcheck.timeout": "1s",
+(rc=3)

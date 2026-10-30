@@ -1,0 +1,67 @@
+événement=main sha=07adf76 image=localhost:5000/geststock:sha-07adf76
+
+▶ lint
+  ✔ hadolint Dockerfile
+  ✔ shellcheck (scripts d'exploitation)
+  ✔ compose yml:override.yml:mailpit.yml valide
+  ✔ compose yml:prod.yml:hardened.yml valide
+  ✔ compose yml:prod.yml:hardened.yml:observability.yml valide
+  ✔ observability/compose.yml valide
+
+▶ test : étape test du Dockerfile (php -l sur tout le code, apachectl -t, extension pdo_mysql)
+  ✔ tests
+
+▶ build
+  ✔ localhost:5000/geststock:sha-07adf76 (180M)
+
+▶ intégration : stack prod + durcie éphémère (projet geststock-ci, port 18090)
+  ✔ stack healthy en 35s cumulées
+  Smoke test GestStock sur http://localhost:18090 (Host: geststock.localhost)
+    ✔ ?health : OK (base joignable, route prête en 1s)
+    ✔ POST article « smoke-1793355529 » avec photo
+    ✔ photo servie par l'alias /uploads (/uploads/p_6ae46f09ea2099.13868620.png, image/png)
+    ✔ code hors public/ non servi (lib/config.php → 404)
+    ✔ article 5 supprimé
+    ✔ log applicatif JSON sur stderr : article ajouté: smoke-1793355529
+    ✔ rapport à la demande : Articles: 4, quantité totale: 517
+    ✔ mail « Rapport stock 2026-10-30 » reçu par Mailpit (1)
+  OK
+  ✔ audit.sh : aucun écart sur 7 conteneur(s)
+  ✔ stack éphémère supprimée (down -v)
+
+▶ release gate (labels OCI, non-root, HEALTHCHECK, trivy HIGH/CRITICAL corrigeables, secrets)
+  ✔ ACCEPTÉ
+
+▶ push + signature (par digest)
+  ✔ poussé : localhost:5000/geststock@sha256:884729a761e54f764386553fdbb973dbc135e631296ad44fe687b87421ff609a
+  ✔ signé
+
+▶ déploiement (rolling update) — signature vérifiée d'abord
+  ✔ signature vérifiée (git_sha=07adf76)
+[11:19:26] projet=geststock version=sha-07adf76 réplicas=2
+ Container geststock-socket-proxy-1  Running
+ Container geststock-db-1  Running
+ Container geststock-proxy-1  Running
+ Container geststock-socket-proxy-1  Waiting
+ Container geststock-socket-proxy-1  Healthy
+ Container geststock-proxy-1  Waiting
+ Container geststock-socket-proxy-1  Waiting
+ Container geststock-db-1  Waiting
+ Container geststock-socket-proxy-1  Healthy
+ Container geststock-db-1  Healthy
+ Container geststock-proxy-1  Healthy
+[11:19:31] nouveau réplica geststock-app-5 : attente healthy…
+[11:19:36] geststock-app-5 healthy ; prise en compte par Traefik (3s)
+[11:19:39] drain de geststock-app-4 (4s)
+[11:19:43] arrêt gracieux de geststock-app-4
+[11:19:47] nouveau réplica geststock-app-6 : attente healthy…
+[11:19:52] geststock-app-6 healthy ; prise en compte par Traefik (3s)
+[11:19:55] drain de geststock-app-3 (4s)
+[11:19:59] arrêt gracieux de geststock-app-3
+[11:20:01] cron (rapport en cours terminé avant arrêt : SIGTERM, 60 s)
+geststock-app-5	localhost:5000/geststock:sha-07adf76	Up 38 seconds (healthy)
+geststock-app-6	localhost:5000/geststock:sha-07adf76	Up 22 seconds (healthy)
+geststock-cron-1	localhost:5000/geststock:sha-07adf76	Up 6 seconds (healthy)
+[11:20:09] terminé en 43s
+
+pipeline vert (main) en 115s
