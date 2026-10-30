@@ -15,7 +15,9 @@ web()  { curl -fsS -H "Host: $HOST" "$@"; }
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 echo "Smoke test GestStock sur $BASE_URL (Host: $HOST)"
 
-[[ $(web "$BASE_URL/?health") == OK ]] && pass "?health : OK (base joignable)" || fail "?health"
+# Traefik « healthy » ne veut pas dire « routes chargées » (découverte Docker + throttle 2 s) : on attend
+for i in $(seq 30); do [[ $(web "$BASE_URL/?health" 2>/dev/null) == OK ]] && break; sleep 1; done
+(( i < 30 )) && pass "?health : OK (base joignable, route prête en ${i}s)" || fail "?health"
 
 # photo PNG 8x8 générée à la volée
 python3 -c 'import zlib,struct,sys
