@@ -1,0 +1,6 @@
+10:24:45 100 req/s sur http://127.0.0.1:18000/health (Host: api.localhost) pendant 150s
+
+requêtes : 12950   succès : 12838   ÉCHECS : 112
+  HTTP 200 : 12838
+  HTTP 503 : 112
+  fenêtre d'échec : 18,30 s (du 10:25:40 au 10:25:58)

@@ -1,0 +1,54 @@
+événement=main ref=– sha=da44a8f tags=sha-da44a8f plateformes=linux/amd64,linux/arm64
+
+▶ lint : hadolint + docker compose config
+  ✔ hadolint apps/shopapi/Dockerfile
+  ✔ hadolint apps/shop-worker/Dockerfile
+  ✔ compose (dev) valide
+  ✔ compose (prod) valide
+
+▶ test : build de l'étape test (lint + tests unitaires dans le Dockerfile)
+  ✔ tests api
+  ✔ tests worker
+
+▶ build + push multi-arch, provenance + SBOM
+  ✔ localhost:5000/shopapi:{sha-da44a8f} @ sha256:3e966b371d1d…
+  ✔ localhost:5000/shop-worker:{sha-da44a8f} @ sha256:96ef09cf7ab1…
+
+▶ release gate (labels OCI, non-root, HEALTHCHECK, trivy HIGH/CRITICAL corrigeables, secrets)
+  ✔ gate shopapi : ACCEPTÉ
+  ✔ gate shop-worker : ACCEPTÉ
+
+▶ signature cosign (par digest)
+  ✔ signé shopapi@sha256:3e966b371d1d…
+  ✔ signé shop-worker@sha256:96ef09cf7ab1…
+
+▶ déploiement preprod (VERSION=sha-da44a8f)
+  ✔ signature vérifiée : shopapi@sha256:3e966b371d1d… (git_sha=da44a8f)
+  ✔ signature vérifiée : shop-worker@sha256:96ef09cf7ab1… (git_sha=da44a8f)
+[10:25:23] contexte=preprod version=sha-da44a8f réplicas=2
+ api Pulling 
+ worker Pulling 
+ api Pulled 
+ worker Pulled 
+ Container shop-redis-1  Running
+ Container shop-proxy-1  Running
+ Container shop-db-1  Running
+ Container shop-proxy-1  Waiting
+ Container shop-db-1  Waiting
+ Container shop-redis-1  Waiting
+ Container shop-redis-1  Healthy
+ Container shop-proxy-1  Healthy
+ Container shop-db-1  Healthy
+[10:25:31] nouveau réplica shop-api-7 (sha-da44a8f) : attente healthy…
+[10:25:36] shop-api-7 healthy ; Traefik le prend en compte (3s)
+[10:25:39] arrêt propre de shop-api-5 (SIGTERM, 15s max)
+[10:25:47] nouveau réplica shop-api-8 (sha-da44a8f) : attente healthy…
+[10:25:53] shop-api-8 healthy ; Traefik le prend en compte (3s)
+[10:25:56] arrêt propre de shop-api-6 (SIGTERM, 15s max)
+[10:26:02] worker (consommateur de file : une courte coupure ne perd aucun message)
+shop-api-7	registry.local:5000/shopapi:sha-da44a8f	Up 40 seconds (healthy)
+shop-api-8	registry.local:5000/shopapi:sha-da44a8f	Up 23 seconds (healthy)
+shop-worker-1	registry.local:5000/shop-worker:sha-da44a8f	Up 6 seconds (healthy)
+[10:26:11] terminé en 48s
+
+pipeline vert (main) en 84s

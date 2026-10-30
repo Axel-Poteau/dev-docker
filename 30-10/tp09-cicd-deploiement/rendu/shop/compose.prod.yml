@@ -27,7 +27,9 @@ services:
     # SIGTERM → drain 5 s (/health en 503) → server.close() → exit ; SIGKILL seulement après 15 s
     stop_grace_period: 15s
     labels:
-      # healthcheck actif de Traefik resserré : un réplica en drain est retiré en ≤ 2 s (< drain de 5 s)
+      # healthcheck actif de Traefik sur la readiness, resserré : un réplica en drain (/ready en 503)
+      # est retiré en ≤ 2 s, avant la fin du drain (5 s)
+      traefik.http.services.api.loadbalancer.healthcheck.path: /ready
       traefik.http.services.api.loadbalancer.healthcheck.interval: 2s
       traefik.http.services.api.loadbalancer.healthcheck.timeout: 1s
       # une connexion refusée par un réplica qui s'arrête est rejouée sur un autre réplica

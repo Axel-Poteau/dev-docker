@@ -11,8 +11,9 @@ const app = express();
 app.use(express.json());
 app.use(pinoHttp({ logger: log }));
 
-// Drain : après SIGTERM, /health répond 503 pour que le reverse proxy retire ce réplica, et chaque
-// réponse ferme sa connexion keep-alive (sinon le proxy continue d'envoyer des requêtes dessus)
+// Drain : après SIGTERM, /ready (readiness) répond 503 pour que le reverse proxy retire ce réplica, et
+// chaque réponse ferme sa connexion keep-alive (sinon le proxy continue d'envoyer des requêtes dessus).
+// /health (liveness) reste à 200 : le processus est vivant et sert encore les requêtes en cours.
 const DRAIN_MS = Number(process.env.SHUTDOWN_DRAIN_MS || 5000);
 let draining = false;
 app.use((_req, res, next) => {
@@ -53,11 +54,10 @@ async function listProducts() {
 // ---- Routes ----
 app.get('/', (_req, res) => res.json({ service: 'shopapi', version: process.env.APP_VERSION || 'dev' }));
 
-app.get('/health', (_req, res) => (draining
-  ? res.status(503).json({ status: 'draining' })
-  : res.json({ status: 'ok' })));
+app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
 app.get('/ready', async (_req, res) => {
+  if (draining) return res.status(503).json({ status: 'draining' });
   const checks = { db: 'skipped', redis: 'skipped' };
   try {
     if (pool) { await pool.query('SELECT 1'); checks.db = 'ok'; }
