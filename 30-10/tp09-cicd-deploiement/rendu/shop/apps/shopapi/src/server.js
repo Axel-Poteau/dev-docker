@@ -11,6 +11,15 @@ const app = express();
 app.use(express.json());
 app.use(pinoHttp({ logger: log }));
 
+// Drain : après SIGTERM, /health répond 503 pour que le reverse proxy retire ce réplica, et chaque
+// réponse ferme sa connexion keep-alive (sinon le proxy continue d'envoyer des requêtes dessus)
+const DRAIN_MS = Number(process.env.SHUTDOWN_DRAIN_MS || 5000);
+let draining = false;
+app.use((_req, res, next) => {
+  if (draining) res.set('Connection', 'close');
+  next();
+});
+
 // ---- Métriques Prometheus ----
 client.collectDefaultMetrics();
 const httpDuration = new client.Histogram({
@@ -44,7 +53,9 @@ async function listProducts() {
 // ---- Routes ----
 app.get('/', (_req, res) => res.json({ service: 'shopapi', version: process.env.APP_VERSION || 'dev' }));
 
-app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+app.get('/health', (_req, res) => (draining
+  ? res.status(503).json({ status: 'draining' })
+  : res.json({ status: 'ok' })));
 
 app.get('/ready', async (_req, res) => {
   const checks = { db: 'skipped', redis: 'skipped' };
@@ -98,13 +109,19 @@ const server = app.listen(port, () => log.info({ port }, 'shopapi démarré'));
 
 // Arrêt propre : indispensable pour les rolling updates
 function shutdown(signal) {
-  log.info({ signal }, 'arrêt demandé');
-  server.close(async () => {
-    if (pool) await pool.end().catch(() => {});
-    if (redis) redis.disconnect();
-    process.exit(0);
-  });
-  setTimeout(() => process.exit(1), 10000).unref();
+  if (draining) return;
+  draining = true;
+  log.info({ signal, drainMs: DRAIN_MS }, 'arrêt demandé : drain');
+  // on continue de servir pendant le drain, le temps que le proxy constate /health en 503
+  setTimeout(() => {
+    server.close(async () => {
+      if (pool) await pool.end().catch(() => {});
+      if (redis) redis.disconnect();
+      process.exit(0);
+    });
+    server.closeIdleConnections();
+  }, DRAIN_MS).unref();
+  setTimeout(() => process.exit(1), DRAIN_MS + 8000).unref();
 }
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
