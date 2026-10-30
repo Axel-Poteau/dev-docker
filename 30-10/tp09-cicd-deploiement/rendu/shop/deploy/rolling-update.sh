@@ -2,6 +2,7 @@
 # rolling-update.sh — met à jour l'API sans interruption, un réplica à la fois.
 #   DOCKER_CONTEXT=preprod VERSION=sha-abc1234 ./deploy/rolling-update.sh
 #   VERSION=<ancien tag> ./deploy/rolling-update.sh          → rollback (même mécanique)
+#   FORCE=1 VERSION=<tag courant> ./deploy/rolling-update.sh → redémarrage progressif (rotation de secret)
 #
 # Pour chaque ancien réplica : +1 réplica neuf → attente « healthy » (HEALTHCHECK + start_period)
 # → Traefik l'ajoute (il ignore les conteneurs starting/unhealthy) → arrêt propre de l'ancien
@@ -60,7 +61,7 @@ fi
 
 count=${#old[@]}
 for id in "${old[@]}"; do
-  if [[ $(docker inspect -f '{{.Config.Image}}' "$id") == "$target" ]]; then
+  if [[ $(docker inspect -f '{{.Config.Image}}' "$id") == "$target" && ${FORCE:-0} != 1 ]]; then
     log "$(name "$id") déjà en $VERSION : conservé"; continue
   fi
   before=$(api_ids)

@@ -1,0 +1,46 @@
+événement=main ref=– sha=df7c20a tags=sha-df7c20a plateformes=linux/amd64,linux/arm64
+
+▶ lint : hadolint + docker compose config
+  ✔ hadolint apps/shopapi/Dockerfile
+  ✔ hadolint apps/shop-worker/Dockerfile
+  ✔ compose (dev) valide
+  ✔ compose (prod) valide
+
+▶ test : build de l'étape test (lint + tests unitaires dans le Dockerfile)
+  ✔ tests api
+  ✔ tests worker
+
+▶ build + push multi-arch, provenance + SBOM
+  ✔ localhost:5000/shopapi:{sha-df7c20a} @ sha256:8342109d01b1…
+  ✔ localhost:5000/shop-worker:{sha-df7c20a} @ sha256:28d8bc7b0252…
+
+▶ release gate (labels OCI, non-root, HEALTHCHECK, trivy HIGH/CRITICAL corrigeables, secrets)
+  ✔ gate shopapi : ACCEPTÉ
+  ✔ gate shop-worker : ACCEPTÉ
+
+▶ signature cosign (par digest)
+  ✔ signé shopapi@sha256:8342109d01b1…
+  ✔ signé shop-worker@sha256:28d8bc7b0252…
+
+▶ déploiement preprod (VERSION=sha-df7c20a)
+  ✔ signature vérifiée : shopapi@sha256:8342109d01b1… (git_sha=df7c20a)
+  ✔ signature vérifiée : shop-worker@sha256:28d8bc7b0252… (git_sha=df7c20a)
+[10:28:44] contexte=preprod version=sha-df7c20a réplicas=2
+ worker Pulling 
+ api Pulling 
+ worker Pulled 
+ api Pulled 
+ Container shop-proxy-1  Running
+ Container shop-db-1  Running
+ Container shop-redis-1  Running
+ Container shop-proxy-1  Waiting
+ Container shop-db-1  Waiting
+ Container shop-redis-1  Waiting
+ Container shop-db-1  Healthy
+ Container shop-redis-1  Healthy
+ Container shop-proxy-1  Healthy
+[10:28:48] REFUS : les labels Traefik de l'API changent ; pendant la cohabitation, Traefik retirerait le service :
+    <   "traefik.http.services.api.loadbalancer.healthcheck.path": "/health",
+    >   "traefik.http.services.api.loadbalancer.healthcheck.path": "/ready",
+[10:28:48] → déployer ce changement hors trafic, ou porter la config du service dans le provider fichier de Traefik.
+[10:28:48]   (ALLOW_LABEL_CHANGE=1 pour passer outre, en acceptant l'interruption)

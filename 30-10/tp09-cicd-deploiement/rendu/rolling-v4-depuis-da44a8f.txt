@@ -1,0 +1,21 @@
+$ DOCKER_CONTEXT=preprod VERSION=sha-df7c20a ./deploy/rolling-update.sh   # retour en avant ; on arrête des réplicas da44a8f
+[10:31:08] contexte=preprod version=sha-df7c20a réplicas=2
+[10:31:13] nouveau réplica shop-api-13 (sha-df7c20a) : attente healthy…
+[10:31:18] shop-api-13 healthy ; Traefik le prend en compte (3s)
+[10:31:22] arrêt propre de shop-api-11 (SIGTERM, 15s max)
+[10:31:29] nouveau réplica shop-api-14 (sha-df7c20a) : attente healthy…
+[10:31:35] shop-api-14 healthy ; Traefik le prend en compte (3s)
+[10:31:38] arrêt propre de shop-api-12 (SIGTERM, 15s max)
+[10:31:44] worker (consommateur de file : une courte coupure ne perd aucun message)
+shop-api-13	registry.local:5000/shopapi:sha-df7c20a	Up 39 seconds (healthy)
+shop-api-14	registry.local:5000/shopapi:sha-df7c20a	Up 23 seconds (healthy)
+shop-worker-1	registry.local:5000/shop-worker:sha-df7c20a	Up 6 seconds (healthy)
+[10:31:52] terminé en 44s
+10:31:05 100 req/s sur http://127.0.0.1:18000/health (Host: api.localhost) pendant 50s
+
+requêtes : 4620   succès : 4265   ÉCHECS : 355
+  HTTP 000 (connexion/timeout) : 45
+  HTTP 200 : 4265
+  HTTP 502 : 1
+  HTTP 503 : 309
+  fenêtre d'échec : 22,59 s (du 10:31:22 au 10:31:45)

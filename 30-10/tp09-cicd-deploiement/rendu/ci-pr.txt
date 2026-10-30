@@ -1,0 +1,17 @@
+événement=pr ref=– sha=8990231 tags=sha-8990231 plateformes=linux/amd64,linux/arm64
+
+▶ lint : hadolint + docker compose config
+  ✔ hadolint apps/shopapi/Dockerfile
+  ✔ hadolint apps/shop-worker/Dockerfile
+  ✔ compose (dev) valide
+  ✔ compose (prod) valide
+
+▶ test : build de l'étape test (lint + tests unitaires dans le Dockerfile)
+  ✔ tests api
+  ✔ tests worker
+
+▶ build des images multi-arch (sans push)
+  ✔ shopapi construit (linux/amd64,linux/arm64)
+  ✔ shop-worker construit (linux/amd64,linux/arm64)
+
+PR verte en 142s
