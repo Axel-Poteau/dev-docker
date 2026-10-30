@@ -51,7 +51,9 @@ mkdir -p "$SECRETS_DIR"
 for s in db_password db_root_password; do openssl rand -hex 24 > "$SECRETS_DIR/$s.txt"; chmod 644 "$SECRETS_DIR/$s.txt"; done
 cleanup() { COMPOSE_FILE=$CI_FILES docker compose down -v --remove-orphans >/dev/null 2>&1 || true; }
 trap cleanup EXIT
-COMPOSE_FILE=$CI_FILES docker compose up -d --wait >/dev/null 2>&1 || { COMPOSE_FILE=$CI_FILES docker compose ps; die "stack éphémère pas healthy"; }
+cleanup   # projet vierge : un volume db resté d'un run précédent aurait été initialisé avec d'autres secrets
+COMPOSE_FILE=$CI_FILES docker compose up -d --wait >/dev/null 2>&1 || {
+  COMPOSE_FILE=$CI_FILES docker compose ps; COMPOSE_FILE=$CI_FILES docker compose logs --tail 20 app db; die "stack éphémère pas healthy"; }
 ok "stack healthy en ${SECONDS}s cumulées"
 COMPOSE_FILE=$CI_FILES COMPOSE="docker compose" BASE_URL=http://localhost:18090 APP_HOST=geststock.localhost \
   ./scripts/smoke-test.sh | sed 's/^/  /'
