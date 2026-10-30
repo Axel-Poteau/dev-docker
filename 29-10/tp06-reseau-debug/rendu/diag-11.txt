@@ -1,0 +1,40 @@
+[16:42:15] $ sed -i 's#@databse:5432#@db:5432#' compose.yml && docker compose up -d api 2>&1 | tail -1; sleep 4; docker exec incident-api-1 getent hosts db; echo rc=$?
+ Container incident-api-2  Started
+rc=2
+
+[16:42:23] $ docker network inspect incident_backend --format '{{range .Containers}}{{.Name}} {{end}}'
+incident-db-1 
+
+[16:42:23] $ python3 - <<'PY'
+p='compose.yml';s=open(p).read()
+s=s.replace('''    networks:
+      - public
+    depends_on:
+      db:''','''    networks:
+      - public
+      - backend
+    depends_on:
+      db:''');open(p,'w').write(s)
+PY
+docker compose up -d api 2>&1 | tail -1; sleep 4; docker exec incident-api-1 getent hosts db
+ Container incident-api-1  Started
+(code retour 2)
+
+[16:42:30] $ docker exec incident-api-1 wget -qO- -T5 http://127.0.0.1:3000/ready; echo
+wget: server returned error: HTTP/1.1 503 Service Unavailable
+
+
+[16:42:30] $ docker exec incident-api-1 getent hosts redis; echo rc=$?
+rc=2
+
+[16:42:30] $ docker run --rm --network host redis:7.4-alpine redis-cli -h 127.0.0.1 ping
+NOAUTH Authentication required.
+
+
+[16:42:31] $ docker run --rm --network host redis:7.4-alpine redis-cli -h 127.0.0.1 -a r3dis --no-auth-warning ping
+PONG
+
+[16:42:32] $ docker compose logs --no-log-prefix api | grep -i redis | tail -2 | cut -c1-300
+[ioredis] Unhandled error event: Error: getaddrinfo ENOTFOUND redis
+[ioredis] Unhandled error event: Error: getaddrinfo ENOTFOUND redis
+

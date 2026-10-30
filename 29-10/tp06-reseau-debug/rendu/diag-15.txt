@@ -1,0 +1,29 @@
+[16:43:46] $ docker compose ps --format 'table {{.Name}}\t{{.Status}}'
+NAME               STATUS
+incident-api-1     Up 25 seconds (healthy)
+incident-api-2     Up 25 seconds (healthy)
+incident-db-1      Up 53 seconds (healthy)
+incident-front-1   Up 19 seconds
+incident-redis-1   Up 33 seconds
+
+[16:43:46] $ docker inspect incident-api-1 incident-api-2 --format '{{.Name}} {{.NetworkSettings.Networks.incident_public.IPAddress}}'
+/incident-api-1 172.28.0.3
+/incident-api-2 172.28.0.2
+
+[16:43:46] $ docker compose up -d --force-recreate api 2>&1 | tail -1; docker inspect incident-api-1 incident-api-2 --format '{{.Name}} {{.NetworkSettings.Networks.incident_public.IPAddress}}'
+ Container incident-api-1  Started
+/incident-api-1 172.28.0.3
+/incident-api-2 172.28.0.2
+
+[16:43:49] $ for i in 1 2 3 4; do curl -s -m5 -o /dev/null -w '%{http_code} ' localhost:8081/products; done; echo
+502 502 502 502 
+
+[16:43:50] $ docker compose logs --no-log-prefix front --since 30s | grep -oE 'upstream: "[^"]+"' | sort | uniq -c
+      8 upstream: "http://172.28.0.2:3000/products"
+      8 upstream: "http://172.28.0.3:3000/products"
+
+[16:43:50] $ docker compose stop db; sleep 12; docker inspect incident-api-1 --format 'api pendant panne DB : {{.State.Health.Status}}'; docker compose start db >/dev/null 2>&1
+ Container incident-db-1  Stopping
+ Container incident-db-1  Stopped
+api pendant panne DB : healthy
+

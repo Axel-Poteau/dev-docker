@@ -1,0 +1,29 @@
+[16:41:51] $ sed -i 's#proxy_pass http://localhost:3000;#proxy_pass http://api:3000;#' nginx/default.conf && docker compose restart front >/dev/null 2>&1; sleep 2; curl -s -m5 -i localhost:8081/products | head -1
+HTTP/1.1 502 Bad Gateway
+
+[16:41:54] $ docker compose logs --no-log-prefix front | grep error | tail -1
+2026/10/30 15:41:54 [error] 22#22: *1 connect() failed (111: Connection refused) while connecting to upstream, client: 172.28.0.1, server: , request: "GET /products HTTP/1.1", upstream: "http://172.28.0.2:3000/products", host: "localhost:8081"
+
+[16:41:54] $ docker exec incident-api-1 env | grep -E '^PORT'
+PORT=8080
+
+[16:41:54] $ sed -i '/      PORT: 8080/d' compose.yml && docker compose up -d api 2>&1 | tail -1; sleep 4; docker compose restart front >/dev/null 2>&1; sleep 2; curl -s -m8 -i localhost:8081/products | head -12
+ Container incident-api-2  Started
+HTTP/1.1 500 Internal Server Error
+Server: nginx/1.27.5
+Date: Fri, 30 Oct 2026 15:42:04 GMT
+Content-Type: application/json; charset=utf-8
+Content-Length: 26
+Connection: keep-alive
+X-Powered-By: Express
+ETag: W/"1a-nO1SMtFqjAylRZvcD/JJ2LGv/qs"
+
+{"error":"internal error"}
+[16:42:04] $ docker compose logs --no-log-prefix api | tail -3 | cut -c1-400
+    at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26)
+{"level":50,"time":1793374924477,"pid":1,"hostname":"5257f52168e6","req":{"id":2,"method":"GET","url":"/products","query":{},"params":{},"headers":{"host":"localhost","connection":"close","user-agent":"curl/8.5.0","accept":"*/*"},"remoteAddress":"::ffff:172.28.0.4","remotePort":44000},"err":{"type":"Error","message":"getaddrinfo ENOTFOUND databse","stack":"Error: getaddrinfo ENOTFOUND databse\n   
+{"level":30,"time":1793374924479,"pid":1,"hostname":"5257f52168e6","req":{"id":2,"method":"GET","url":"/products","query":{},"params":{},"headers":{"host":"localhost","connection":"close","user-agent":"curl/8.5.0","accept":"*/*"},"remoteAddress":"::ffff:172.28.0.4","remotePort":44000},"res":{"statusCode":500,"headers":{"x-powered-by":"Express","content-type":"application/json; charset=utf-8","cont
+
+[16:42:04] $ docker exec incident-api-1 getent hosts databse db redis; echo rc=$?
+rc=2
+

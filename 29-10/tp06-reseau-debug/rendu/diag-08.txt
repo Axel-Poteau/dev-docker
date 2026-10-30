@@ -1,0 +1,12 @@
+[16:41:20] $ docker network ls --filter name=incident --format '{{.ID}} {{.Name}}'
+0937ffba0cfd incident_backend
+ffe4b204e16d incident_public
+
+[16:41:20] $ for c in incident-front-1 incident-api-1 incident-api-2; do echo "$c : $(docker inspect $c --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}({{$v.NetworkID | printf "%.12s"}}) {{end}}')"; done
+incident-front-1 : incident_public(ffe4b204e16d) 
+incident-api-1 : incident_public(ffe4b204e16d) 
+incident-api-2 : incident_public(ffe4b204e16d) 
+
+[16:41:20] $ docker network inspect incident_public --format 'internal={{.Internal}} conteneurs={{range .Containers}}{{.Name}} {{end}}'
+internal=false conteneurs=incident-api-1 incident-front-1 incident-api-2 
+

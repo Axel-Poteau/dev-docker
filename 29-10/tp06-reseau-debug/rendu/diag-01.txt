@@ -1,0 +1,11 @@
+[16:39:19] $ curl -s -m3 -i localhost:8081/products
+(code retour 7)
+
+[16:39:19] $ docker compose config -q
+services.deploy.replicas: can't set container_name and api as container name must be unique: invalid compose project
+(code retour 1)
+
+[16:39:19] $ docker compose up -d
+services.deploy.replicas: can't set container_name and api as container name must be unique: invalid compose project
+(code retour 1)
+

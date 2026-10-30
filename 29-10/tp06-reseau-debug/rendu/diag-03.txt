@@ -1,0 +1,44 @@
+[16:39:40] $ ls ../../tp04-compose-entreprise/
+README.md
+rendu
+starter
+
+[16:39:40] $ sed -i 's#tp04-compose-entreprise/solution/#tp04-compose-entreprise/rendu/#' compose.yml && grep -n tp04 compose.yml
+17:    build: ../../tp04-compose-entreprise/rendu/apps/shopapi
+39:      - ../../tp04-compose-entreprise/rendu/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+[16:39:40] $ docker compose up -d 2>&1 | grep -v -E '^#[0-9]+ (sha256|extracting|transferring|resolve)' | tail -25
+ Network incident_backend  Created
+ Volume incident_pgdata  Creating
+ Volume incident_pgdata  Created
+ Container incident-db-1  Creating
+ Container incident-redis-1  Creating
+ Container incident-db-1  Created
+ Container incident-api-2  Creating
+ Container incident-api-1  Creating
+ Container incident-redis-1  Created
+ Container incident-api-1  Created
+ Container incident-api-2  Created
+ Container incident-front-1  Creating
+ Container incident-front-1  Created
+ Container incident-db-1  Starting
+ Container incident-redis-1  Starting
+ Container incident-redis-1  Started
+ Container incident-db-1  Started
+ Container incident-db-1  Waiting
+ Container incident-db-1  Healthy
+ Container incident-api-1  Starting
+ Container incident-api-1  Started
+ Container incident-api-2  Starting
+ Container incident-api-2  Started
+ Container incident-front-1  Starting
+Error response from daemon: failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: error mounting "/host_mnt/home/axel/Documents/repos/docker/docker_ynov_10_26/29-10/tp06-reseau-debug/rendu/nginx" to rootfs at "/etc/nginx/conf.d/default.conf": create mountpoint for /etc/nginx/conf.d/default.conf mount: cannot create subdirectories in "/var/lib/docker/rootfs/overlayfs/182e0ee56fa3694924626049b99782ff0069f3a2c88e7b736f55f3f0fa45c19c/etc/nginx/conf.d/default.conf": not a directory: unknown: Are you trying to mount a directory onto a file (or vice-versa)? Check if the specified host path exists and is the expected type
+
+[16:39:58] $ docker compose ps -a --format 'table {{.Service}}\t{{.Status}}'
+SERVICE   STATUS
+api       Exited (1) Less than a second ago
+api       Exited (1) Less than a second ago
+db        Up 7 seconds (healthy)
+front     Created
+redis     Up 7 seconds
+

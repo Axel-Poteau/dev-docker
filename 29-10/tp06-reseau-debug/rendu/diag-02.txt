@@ -1,0 +1,14 @@
+[16:39:29] $ sed -i '/container_name: api/d' compose.yml && echo 'correction 1 : container_name supprimé'
+correction 1 : container_name supprimé
+
+[16:39:29] $ docker compose config -q && echo config OK
+config OK
+
+[16:39:30] $ docker compose up -d
+#1 [internal] load local bake definitions
+#1 reading from stdin 649B done
+#1 DONE 0.0s
+unable to prepare context: path "/home/axel/Documents/repos/docker/docker_ynov_10_26/29-10/tp04-compose-entreprise/solution/apps/shopapi" not found
+
+(code retour 1)
+

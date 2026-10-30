@@ -1,0 +1,36 @@
+[16:40:07] $ docker compose logs --no-log-prefix api | head -8
+node:internal/modules/cjs/loader:1210
+  throw err;
+  ^
+
+Error: Cannot find module '/app/server.js'
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)
+    at Module._load (node:internal/modules/cjs/loader:1038:27)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+
+[16:40:07] $ docker run --rm --entrypoint ls incident-api -la /app /app/src
+/app:
+total 20
+drwxr-xr-x    1 root     root          4096 Oct 29 09:24 .
+drwxr-xr-x    1 root     root          4096 Oct 30 15:40 ..
+drwxr-xr-x  114 node     node          4096 Oct 29 09:24 node_modules
+-rw-rw-r--    1 node     node           545 Oct 29 08:47 package.json
+drwxr-xr-x    2 node     node          4096 Oct 29 08:55 src
+
+/app/src:
+total 16
+drwxr-xr-x    2 node     node          4096 Oct 29 08:55 .
+drwxr-xr-x    1 root     root          4096 Oct 29 09:24 ..
+-rw-rw-r--    1 node     node          4135 Oct 29 08:55 server.js
+
+[16:40:09] $ docker image inspect incident-api --format 'CMD={{json .Config.Cmd}} WORKDIR={{.Config.WorkingDir}} PORT env={{json .Config.Env}}'
+CMD=["node","src/server.js"] WORKDIR=/app PORT env=["PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin","NODE_ENV=production","APP_VERSION=dev","PORT=3000"]
+
+[16:40:09] $ docker exec incident-db-1 pg_isready -U postgres; echo "rc=$?"; docker exec incident-db-1 psql -U postgres -c 'select 1' 2>&1 | head -2
+/var/run/postgresql:5432 - accepting connections
+rc=0
+psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  role "postgres" does not exist
+
+[16:40:09] $ docker inspect incident-redis-1 --format 'NetworkMode={{.HostConfig.NetworkMode}} Networks={{json .NetworkSettings.Networks}}'
+NetworkMode=host Networks={"host":{"IPAMConfig":null,"Links":null,"Aliases":null,"MacAddress":"","DriverOpts":null,"GwPriority":0,"NetworkID":"06744e2c71c42eeec0f4c3ab896259e1421cfae3e82fcd40ef1bf0ef0d3683e3","EndpointID":"bb777c8f9ca93d8e3dc8151dd6abb4b0eecc26eac8b079f37c35eb1d8e10ec5c","Gateway":"","IPAddress":"","IPPrefixLen":0,"IPv6Gateway":"","GlobalIPv6Address":"","GlobalIPv6PrefixLen":0,"DNSNames":null}}
+

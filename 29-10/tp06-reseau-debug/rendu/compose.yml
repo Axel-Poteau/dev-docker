@@ -1,0 +1,112 @@
+# Préprod Shop SAS — compose corrigé après l'incident P1 du 29/10 (rapport : INCIDENT.md).
+# Chaque correction est repérée par [Ax], numéro de l'anomalie dans le rapport.
+#   ./secrets.sh && docker compose up -d --wait && ./smoke-test.sh
+name: incident
+
+x-logging: &logging
+  driver: json-file
+  options: {max-size: "10m", max-file: "3"}             # [A16] rotation (rien par défaut)
+
+x-defaults: &defaults
+  restart: unless-stopped                                  # [A16] redémarrage après crash / reboot
+  logging: *logging
+
+services:
+  front:
+    <<: *defaults
+    image: nginx:1.27-alpine
+    ports:
+      - "8081:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro   # [A3] fichier sur fichier (pas un dossier)
+    networks:
+      - public
+    depends_on:
+      api:
+        condition: service_healthy                         # [A14] pas de 502 au démarrage
+    healthcheck:                                           # [A14] front sans healthcheck
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  api:
+    <<: *defaults
+    build: ../../tp04-compose-entreprise/rendu/apps/shopapi   # [A2] le dossier « solution » n'existe pas
+    # [A1] container_name supprimé : incompatible avec replicas: 2
+    # [A15] l'URL de connexion est construite à partir des secrets, pas écrite en clair dans le compose
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >-
+        export DATABASE_URL="postgres://shop:$$(cat /run/secrets/db_password)@db:5432/shop"
+        REDIS_URL="redis://:$$(cat /run/secrets/redis_password)@redis:6379";
+        exec "$$@"
+      - --
+    command: ["node", "src/server.js"]                     # [A4] le code est dans src/
+    # [A5] plus de PORT: 8080 : l'API écoute sur 3000 (défaut de l'image), comme le front l'attend
+    # [A6] hôte « db » (et non « databse ») ; [A11] mot de passe Redis fourni
+    secrets: [db_password, redis_password]
+    networks:
+      - public
+      - backend                                            # [A7] l'API doit joindre db et redis
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy                         # [A14]
+    healthcheck:                                           # [A13] /ready (DB + Redis) et non /health
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/ready').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    deploy:
+      replicas: 2
+
+  db:
+    <<: *defaults
+    image: postgres:16.4-alpine
+    environment:
+      POSTGRES_USER: shop
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password     # [A15]
+      POSTGRES_DB: shop
+    secrets: [db_password]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../../tp04-compose-entreprise/rendu/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro   # [A2]
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shop -d shop"]   # [A12] le rôle « postgres » n'existe pas
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    <<: *defaults
+    image: redis:7.4-alpine
+    # [A15] mot de passe lu dans le secret ; [A10] plus de network_mode: host
+    command: ["sh", "-c", "exec redis-server --requirepass \"$$(cat /run/secrets/redis_password)\""]
+    secrets: [redis_password]
+    networks:
+      - backend
+    healthcheck:                                           # [A14]
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$(cat /run/secrets/redis_password)\" redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+networks:
+  public: {}                                               # [A8] « internal » sur le réseau publié = port injoignable
+  backend:
+    internal: true                                         # [A8] c'est la base qui ne doit pas sortir
+
+volumes:
+  pgdata:
+
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+  redis_password:
+    file: ./secrets/redis_password.txt

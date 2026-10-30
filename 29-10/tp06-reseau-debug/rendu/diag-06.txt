@@ -1,0 +1,49 @@
+[16:40:51] $ python3 - <<'PY'
+import re;p='compose.yml';s=open(p).read()
+s=s.replace('''networks:
+  public:
+    internal: true
+  backend:
+''','''networks:
+  public: {}
+  backend:
+    internal: true
+''');open(p,'w').write(s)
+PY
+tail -6 compose.yml
+  public: {}
+  backend:
+    internal: true
+
+volumes:
+  pgdata:
+
+[16:40:51] $ docker compose up -d 2>&1 | tail -2; docker port incident-front-1
+ Container incident-front-1  Starting
+ Container incident-front-1  Started
+80/tcp -> 0.0.0.0:8081
+80/tcp -> [::]:8081
+
+[16:41:01] $ curl -s -m3 -i localhost:8081/health
+(code retour 52)
+
+[16:41:01] $ curl -s -m5 -i localhost:8081/products
+(code retour 52)
+
+[16:41:01] $ docker compose logs --no-log-prefix front | grep -E 'error|warn' | tail -3
+
+[16:41:01] $ docker exec incident-front-1 sh -c 'getent hosts api; wget -qO- -T2 http://localhost:3000/health'
+wget: can't connect to remote host: Connection refused
+(code retour 1)
+
+[16:41:01] $ docker exec incident-api-1 sh -c 'netstat -tln 2>/dev/null || cat /proc/net/tcp | head -4'
+Active Internet connections (only servers)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       
+tcp        0      0 127.0.0.11:35685        0.0.0.0:*               LISTEN      
+tcp        0      0 :::8080                 :::*                    LISTEN      
+
+[16:41:01] $ docker run --rm --network container:incident-api-1 nicolaka/netshoot:v0.13 ss -tlnp
+State  Recv-Q Send-Q Local Address:Port  Peer Address:PortProcess
+LISTEN 0      4096      127.0.0.11:35685      0.0.0.0:*          
+LISTEN 0      511                *:8080             *:*          
+

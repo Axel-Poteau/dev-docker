@@ -1,0 +1,14 @@
+[16:42:50] $ docker inspect incident-db-1 --format 'db sur backend : DNSNames={{json .NetworkSettings.Networks.incident_backend.DNSNames}}'
+db sur backend : DNSNames=["incident-db-1","49a89d92004e"]
+
+[16:42:50] $ docker compose up -d --force-recreate db 2>&1 | tail -1; docker inspect incident-db-1 --format 'DNSNames={{json .NetworkSettings.Networks.incident_backend.DNSNames}}'
+ Container incident-db-1  Started
+DNSNames=["incident-db-1","db","63f922d74df5"]
+
+[16:42:52] $ sleep 3; docker exec incident-api-1 getent hosts db
+172.29.0.2        db  db
+
+[16:42:56] $ docker exec incident-api-1 wget -qO- -T5 http://127.0.0.1:3000/ready; echo
+wget: server returned error: HTTP/1.1 503 Service Unavailable
+
+

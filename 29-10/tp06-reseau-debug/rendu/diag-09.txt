@@ -1,0 +1,30 @@
+[16:41:36] $ docker inspect incident-api-1 --format 'DNSNames={{json .NetworkSettings.Networks.incident_public.DNSNames}} Aliases={{json .NetworkSettings.Networks.incident_public.Aliases}}'
+DNSNames=["incident-api-1","4dd84903eeac"] Aliases=null
+
+[16:41:36] $ docker compose version
+Docker Compose version v2.39.4-desktop.1
+
+[16:41:36] $ docker compose up -d --force-recreate api front 2>&1 | tail -2
+ Container incident-front-1  Starting
+ Container incident-front-1  Started
+
+[16:41:41] $ docker inspect incident-api-1 --format 'DNSNames={{json .NetworkSettings.Networks.incident_public.DNSNames}}'
+DNSNames=["incident-api-1","api","3ca4a4003db3"]
+
+[16:41:41] $ docker exec incident-front-1 nslookup api 127.0.0.11 | grep -A1 Name
+Name:	api
+Address: 172.28.0.3
+Name:	api
+Address: 172.28.0.2
+
+[16:41:41] $ curl -s -m5 -i localhost:8081/products | head -5
+HTTP/1.1 502 Bad Gateway
+Server: nginx/1.27.5
+Date: Fri, 30 Oct 2026 15:41:41 GMT
+Content-Type: text/html
+Content-Length: 157
+
+[16:41:41] $ docker compose logs --no-log-prefix front | grep error | tail -2
+2026/10/30 15:41:41 [error] 27#27: *1 connect() failed (111: Connection refused) while connecting to upstream, client: 172.28.0.1, server: , request: "GET /products HTTP/1.1", upstream: "http://[::1]:3000/products", host: "localhost:8081"
+2026/10/30 15:41:41 [error] 27#27: *1 connect() failed (111: Connection refused) while connecting to upstream, client: 172.28.0.1, server: , request: "GET /products HTTP/1.1", upstream: "http://127.0.0.1:3000/products", host: "localhost:8081"
+

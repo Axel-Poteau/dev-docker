@@ -1,0 +1,22 @@
+[16:43:08] $ docker exec incident-api-1 node -e "fetch('http://127.0.0.1:3000/ready').then(r=>r.text()).then(console.log)"
+{"status":"not ready","checks":{"db":"ok","redis":"skipped","error":"Reached the max retries per request limit (which is 1). Refer to \"maxRetriesPerRequest\" option for details."}}
+
+[16:43:11] $ sed -i 's#    network_mode: host#    networks:\n      - backend#' compose.yml && docker compose up -d redis 2>&1 | tail -1; docker exec incident-api-1 getent hosts redis
+ Container incident-redis-1  Started
+172.29.0.5        redis  redis
+
+[16:43:13] $ sleep 3; docker exec incident-api-1 node -e "fetch('http://127.0.0.1:3000/ready').then(r=>r.text()).then(console.log)"
+{"status":"not ready","checks":{"db":"ok","redis":"skipped","error":"NOAUTH Authentication required."}}
+
+[16:43:17] $ sed -i 's#REDIS_URL: redis://redis:6379#REDIS_URL: redis://:r3dis@redis:6379#' compose.yml && docker compose up -d api 2>&1 | tail -1; sleep 4; docker exec incident-api-1 node -e "fetch('http://127.0.0.1:3000/ready').then(r=>r.text()).then(console.log)"
+ Container incident-api-1  Started
+{"status":"ready","checks":{"db":"ok","redis":"ok"}}
+
+[16:43:26] $ docker compose restart front >/dev/null 2>&1; sleep 2; curl -s -m5 -i localhost:8081/products | grep -E 'HTTP|X-Cache|^\['; curl -s -m5 -i localhost:8081/products | grep -E 'HTTP|X-Cache|^\['
+HTTP/1.1 200 OK
+X-Cache: MISS
+[{"id":1,"name":"Clavier mécanique","price":"89.90","stock":12},{"id":2,"name":"Écran 27\"","price":"249.00","stock":4},{"id":3,"name":"Souris sans fil","price":"29.50","stock":40}]
+HTTP/1.1 200 OK
+X-Cache: HIT
+[{"id":1,"name":"Clavier mécanique","price":"89.90","stock":12},{"id":2,"name":"Écran 27\"","price":"249.00","stock":4},{"id":3,"name":"Souris sans fil","price":"29.50","stock":40}]
+

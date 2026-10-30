@@ -1,0 +1,20 @@
+[16:42:41] $ docker inspect incident-api-1 --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}={{json $v.DNSNames}} {{end}}'
+incident_backend=["incident-api-1","api","0dc0bdfffc52"] incident_public=["incident-api-1","api","0dc0bdfffc52"] 
+
+[16:42:41] $ docker exec incident-api-1 nslookup db 127.0.0.11 | tail -3
+
+** server can't find db: NXDOMAIN
+
+
+[16:42:41] $ docker exec incident-api-1 sh -c 'getent hosts db; echo rc=$?; grep hosts /etc/nsswitch.conf; ls -l $(which getent)'
+rc=2
+hosts: files dns
+-rwxr-xr-x    1 root     root         18480 Oct 21 16:00 /usr/bin/getent
+
+[16:42:41] $ docker exec incident-api-1 node -e "require('dns').lookup('db',(e,a)=>console.log(e?e.code:a))"
+ENOTFOUND
+
+[16:42:41] $ docker exec incident-api-1 wget -qO- -T5 http://127.0.0.1:3000/ready; echo
+wget: server returned error: HTTP/1.1 503 Service Unavailable
+
+

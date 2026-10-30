@@ -1,0 +1,15 @@
+[16:44:15] $ sleep 5; for i in 1 2 3 4; do curl -s -m5 -o /dev/null -w '%{http_code} ' localhost:8081/products; done; echo   # 502 précédents = API pas encore à l'écoute, aucun contrôle de santé côté front
+200 200 200 200 
+
+[16:44:20] $ docker compose up -d --scale api=3 --no-recreate 2>&1 | tail -1; sleep 6; docker exec incident-front-1 nslookup api 127.0.0.11 | grep -c Address:.*172
+ Container incident-api-3  Started
+3
+
+[16:44:28] $ for i in $(seq 30); do curl -s -o /dev/null localhost:8081/products; done; for c in 1 2 3; do echo "api-$c : $(docker compose logs --no-log-prefix --since 20s api 2>/dev/null | true; docker logs --since 20s incident-api-$c 2>&1 | grep -c '"url":"/products"') requêtes"; done
+api-1 : 16 requêtes
+api-2 : 18 requêtes
+api-3 : 0 requêtes
+
+[16:44:28] $ docker compose up -d --scale api=2 2>&1 | tail -1
+ Container incident-db-1  Healthy
+

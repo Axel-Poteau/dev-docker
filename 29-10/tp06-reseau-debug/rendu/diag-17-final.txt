@@ -1,0 +1,48 @@
+[16:45:06] $ docker compose -p incident ls 2>/dev/null; docker compose config --format json | jq -r .name
+NAME                STATUS              CONFIG FILES
+geststock           running(8)          /home/axel/Documents/repos/docker/docker_ynov_10_26/30-10/tp10-projet-fil-rouge/rendu/geststock-docker/compose.yml,/home/axel/Documents/repos/docker/docker_ynov_10_26/30-10/tp10-projet-fil-rouge/rendu/geststock-docker/compose.prod.yml,/home/axel/Documents/repos/docker/docker_ynov_10_26/30-10/tp10-projet-fil-rouge/rendu/geststock-docker/compose.hardened.yml,/home/axel/Documents/repos/docker/docker_ynov_10_26/30-10/tp10-projet-fil-rouge/rendu/geststock-docker/compose.mailpit.yml,/home/axel/Documents/repos/docker/docker_ynov_10_26/30-10/tp10-projet-fil-rouge/rendu/geststock-docker/compose.observability.yml
+incident            running(5)          /home/axel/Documents/repos/docker/docker_ynov_10_26/29-10/tp06-reseau-debug/rendu/compose.yml
+observability       running(4)          /home/axel/Documents/repos/docker/docker_ynov_10_26/30-10/tp10-projet-fil-rouge/rendu/geststock-docker/observability/compose.yml
+preprod-host        running(1)          /home/axel/Documents/repos/docker/docker_ynov_10_26/30-10/tp09-cicd-deploiement/rendu/shop/deploy/preprod-host/compose.yml
+shop-registry       running(2)          /home/axel/Documents/repos/docker/docker_ynov_10_26/26-10/tp03-registry-supply-chain/rendu/registry/compose.yml
+shopdata            running(1)          /home/axel/Documents/repos/docker/docker_ynov_10_26/29-10/tp05-donnees-persistance/rendu/upgrade/compose.yml
+incident
+
+[16:45:06] $ docker compose -p incident down -v --remove-orphans 2>&1 | tail -3   # volume initialisé avec l'ancien mot de passe en clair
+ Volume incident_pgdata  Removed
+ Network incident_public  Removed
+ Network incident_backend  Removed
+
+[16:45:09] $ ./secrets.sh
+secrets/db_password.txt créé
+secrets/redis_password.txt créé
+
+[16:45:09] $ docker compose config -q && echo config OK
+config OK
+
+[16:45:09] $ docker compose up -d --wait 2>&1 | tail -6
+ Container incident-front-1  Waiting
+ Container incident-redis-1  Healthy
+ Container incident-db-1  Healthy
+ Container incident-api-2  Healthy
+ Container incident-api-1  Healthy
+ Container incident-front-1  Healthy
+
+[16:45:34] $ docker compose ps --format 'table {{.Name}}\t{{.Status}}\t{{.Ports}}'
+NAME               STATUS                    PORTS
+incident-api-1     Up 16 seconds (healthy)   3000/tcp
+incident-api-2     Up 17 seconds (healthy)   3000/tcp
+incident-db-1      Up 22 seconds (healthy)   
+incident-front-1   Up 10 seconds (healthy)   0.0.0.0:8081->80/tcp, [::]:8081->80/tcp
+incident-redis-1   Up 22 seconds (healthy)   
+
+[16:45:34] $ ./smoke-test.sh
+OK /products : 3 produits, MISS puis HIT
+OK 5 conteneurs healthy
+
+[16:45:34] $ curl -s -i localhost:8081/products | grep -E 'HTTP|X-Cache'; curl -s -i localhost:8081/products | grep -E 'HTTP|X-Cache'
+HTTP/1.1 200 OK
+X-Cache: HIT
+HTTP/1.1 200 OK
+X-Cache: HIT
+

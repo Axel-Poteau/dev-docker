@@ -1,0 +1,68 @@
+[16:41:11] $ curl -sv -m3 localhost:8081/health 2>&1 | tail -6
+< Content-Length: 8
+< Connection: keep-alive
+< 
+{ [8 bytes data]
+* Connection #0 to host localhost left intact
+front ok
+[16:41:11] $ docker exec incident-front-1 wget -qSO- -T2 http://127.0.0.1/health
+front ok  HTTP/1.1 200 OK
+  Server: nginx/1.27.5
+  Date: Fri, 30 Oct 2026 15:41:11 GMT
+  Content-Type: application/octet-stream
+  Content-Length: 8
+  Connection: close
+  
+
+[16:41:11] $ docker exec incident-front-1 nginx -T 2>&1 | grep -vE '^#|^$' | head -40
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+user  nginx;
+worker_processes  auto;
+error_log  /var/log/nginx/error.log notice;
+pid        /run/nginx.pid;
+events {
+    worker_connections  1024;
+}
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+    access_log  /var/log/nginx/access.log  main;
+    sendfile        on;
+    #tcp_nopush     on;
+    keepalive_timeout  65;
+    #gzip  on;
+    include /etc/nginx/conf.d/*.conf;
+}
+types {
+    text/html                                        html htm shtml;
+    text/css                                         css;
+    text/xml                                         xml;
+    image/gif                                        gif;
+    image/jpeg                                       jpeg jpg;
+    application/javascript                           js;
+    application/atom+xml                             atom;
+    application/rss+xml                              rss;
+    text/mathml                                      mml;
+    text/plain                                       txt;
+    text/vnd.sun.j2me.app-descriptor                 jad;
+    text/vnd.wap.wml                                 wml;
+    text/x-component                                 htc;
+    image/avif                                       avif;
+    image/png                                        png;
+    image/svg+xml                                    svg svgz;
+    image/tiff                                       tif tiff;
+
+[16:41:11] $ docker exec incident-front-1 nslookup api 127.0.0.11
+Server:		127.0.0.11
+Address:	127.0.0.11:53
+
+** server can't find api: NXDOMAIN
+
+** server can't find api: NXDOMAIN
+
+(code retour 1)
+

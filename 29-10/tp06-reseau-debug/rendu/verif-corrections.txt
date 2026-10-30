@@ -1,0 +1,35 @@
+[16:45:47] $ docker compose up -d --scale api=3 --no-recreate --wait 2>&1 | tail -1; sleep 11
+ Container incident-api-1  Healthy
+
+[16:46:06] $ for i in $(seq 60); do curl -s -o /dev/null localhost:8081/products; done; for c in 1 2 3; do echo "api-$c : $(docker logs --since 15s incident-api-$c 2>&1 | grep -c '"res":{"statusCode":200') réponses 200"; done
+api-1 : 21 réponses 200
+api-2 : 26 réponses 200
+api-3 : 22 réponses 200
+
+[16:46:07] $ docker compose up -d --scale api=2 --wait 2>&1 | tail -1
+ Container incident-api-1  Healthy
+
+[16:46:10] $ docker compose up -d --force-recreate --no-deps api 2>&1 | tail -1; codes=$(for i in $(seq 40); do curl -s -m5 -o /dev/null -w '%{http_code}\n' localhost:8081/products; sleep 0.25; done | sort | uniq -c); echo "après recréation de l'API sans redémarrer le front : $codes"
+ Container incident-api-1  Started
+après recréation de l'API sans redémarrer le front :      40 200
+
+[16:46:28] $ docker compose stop db 2>&1 | tail -1; sleep 20; docker compose ps --format '{{.Name}} {{.Health}}'
+ Container incident-db-1  Stopped
+incident-api-1 starting
+incident-api-2 starting
+incident-front-1 healthy
+incident-redis-1 healthy
+
+[16:46:48] $ curl -s -m5 -o /dev/null -w '%{http_code}\n' localhost:8081/products
+500
+
+[16:46:48] $ docker compose start db 2>&1 | tail -1; sleep 15; docker compose ps --format '{{.Name}} {{.Health}}'; ./smoke-test.sh
+ Container incident-db-1  Started
+incident-api-1 healthy
+incident-api-2 healthy
+incident-db-1 healthy
+incident-front-1 healthy
+incident-redis-1 healthy
+OK /products : 3 produits, MISS puis HIT
+OK 5 conteneurs healthy
+
