@@ -110,6 +110,10 @@ services:
       traefik.http.routers.geststock.middlewares: geststock-retry
       traefik.http.middlewares.geststock-retry.retry.attempts: "3"
       traefik.http.services.geststock.loadbalancer.server.port: "8080"
+      # healthcheck actif : un réplica en drain (?health → 503) sort du pool en ≤ 2 s
+      traefik.http.services.geststock.loadbalancer.healthcheck.path: /?health
+      traefik.http.services.geststock.loadbalancer.healthcheck.interval: 2s
+      traefik.http.services.geststock.loadbalancer.healthcheck.timeout: 1s
 
   # Rapport quotidien : même image, supercronic à la place d'Apache (cf. RUNBOOK.md)
   #   test à la demande : docker compose exec cron php bin/rapport.php   (ou make rapport)

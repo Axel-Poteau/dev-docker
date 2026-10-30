@@ -4,14 +4,15 @@
 #   FORCE=1 VERSION=<tag courant> ./deploy/rolling-update.sh  redémarrage progressif (rotation de secret)
 # Compose : COMPOSE_FILE (défaut : prod + durci) ; DOCKER_CONTEXT pour un hôte distant.
 # Par réplica : +1 neuf → healthy (HEALTHCHECK ?health) → Traefik l'ajoute → arrêt gracieux de l'ancien
-# (SIGWINCH : Apache termine les requêtes en cours ; Traefik rejoue sur l'autre réplica une connexion refusée).
+# après un drain (/tmp/drain → ?health en 503 → retiré du pool Traefik), puis SIGWINCH : Apache termine
+# les requêtes en cours.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 : "${VERSION:?VERSION requise (ex. sha-abc1234)}"
 export VERSION COMPOSE_FILE="${COMPOSE_FILE:-compose.yml:compose.prod.yml:compose.hardened.yml}"
 PROJECT="${COMPOSE_PROJECT_NAME:-geststock}"
 SERVICE=app
-REPLICAS="${REPLICAS:-2}"; STOP_TIMEOUT="${STOP_TIMEOUT:-20}"; HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-90}"; DRAIN_DELAY="${DRAIN_DELAY:-3}"
+REPLICAS="${REPLICAS:-2}"; STOP_TIMEOUT="${STOP_TIMEOUT:-20}"; HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-90}"; DRAIN_DELAY="${DRAIN_DELAY:-3}"; DRAIN_TIME="${DRAIN_TIME:-4}"   # > healthcheck Traefik (2 s)
 COMPOSE=(docker compose)
 log() { printf '[%s] %s\n' "$(date +%T)" "$*"; }
 ids() { docker ps -q --filter "label=com.docker.compose.project=$PROJECT" --filter "label=com.docker.compose.service=$SERVICE" | sort; }
@@ -59,6 +60,8 @@ for id in "${old[@]}"; do
     docker logs --tail 20 "$new" >&2 || true; docker rm -f "$new" >/dev/null; exit 1
   fi
   log "$(name "$new") healthy ; prise en compte par Traefik (${DRAIN_DELAY}s)"; sleep "$DRAIN_DELAY"
+  # drain : ?health en 503 (règle Apache), Traefik le retire du pool avant qu'Apache ne ferme ses sockets
+  docker exec "$id" touch /tmp/drain 2>/dev/null && log "drain de $(name "$id") (${DRAIN_TIME}s)" && sleep "$DRAIN_TIME"
   log "arrêt gracieux de $(name "$id")"
   docker stop -t "$STOP_TIMEOUT" "$id" >/dev/null && docker rm "$id" >/dev/null
 done

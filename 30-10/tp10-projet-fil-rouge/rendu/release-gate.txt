@@ -1,0 +1,19 @@
+
+== 1. Labels OCI
+  ✔ org.opencontainers.image.version=sha-959964c
+  ✔ org.opencontainers.image.revision=959964c
+  ✔ org.opencontainers.image.source=https://github.com/shop-sas/geststock-docker
+
+== 2. Utilisateur non-root
+  ✔ USER=www-data
+
+== 3. HEALTHCHECK
+  ✔ HEALTHCHECK ["CMD","sh","-c","curl -fsS --max-time 2 'http://127.0.0.1:8080/?healt
+
+== 4. Vulnérabilités HIGH,CRITICAL corrigeables
+  ✔ aucune CVE HIGH,CRITICAL avec correctif disponible
+
+== 5. Secrets
+  ✔ aucun secret détecté
+
+ACCEPTÉ : localhost:5000/geststock:sha-959964c respecte la politique Shop SAS

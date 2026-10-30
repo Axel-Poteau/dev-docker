@@ -1,0 +1,20 @@
+$ FORCE=1 VERSION=sha-959964c ./deploy/rolling-update.sh     # redémarrage progressif
+[11:16:16] projet=geststock version=sha-959964c réplicas=2
+[11:16:19] nouveau réplica geststock-app-3 : attente healthy…
+[11:16:24] geststock-app-3 healthy ; prise en compte par Traefik (3s)
+[11:16:27] arrêt gracieux de geststock-app-1
+[11:16:31] nouveau réplica geststock-app-4 : attente healthy…
+[11:16:36] geststock-app-4 healthy ; prise en compte par Traefik (3s)
+[11:16:39] arrêt gracieux de geststock-app-2
+[11:16:41] cron (rapport en cours terminé avant arrêt : SIGTERM, 60 s)
+geststock-app-3	localhost:5000/geststock:sha-959964c	Up 24 seconds (healthy)
+geststock-app-4	localhost:5000/geststock:sha-959964c	Up 12 seconds (healthy)
+geststock-cron-1	localhost:5000/geststock:sha-959964c	Up 50 seconds (healthy)
+[11:16:43] terminé en 27s
+11:16:13 100 req/s sur http://127.0.0.1:8090/?health (Host: geststock.localhost) pendant 55s
+
+requêtes : 5070   succès : 5007   ÉCHECS : 63
+  HTTP 000 (connexion/timeout) : 60
+  HTTP 200 : 5007
+  HTTP 502 : 3
+  fenêtre d'échec : 13,70 s (du 11:16:28 au 11:16:42)

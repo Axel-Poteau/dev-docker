@@ -1,0 +1,16 @@
+# Incident réel pendant le TP : « docker compose down -v » lancé sans les variables du projet CI a supprimé
+# la stack geststock ET ses volumes (base reprise du legacy + photos). Le pipeline a redéployé sur volumes vides.
+$ curl …/  → GestStock — inventaire (4 articles)   (données de démo de schema.sql)
+$ ls backups/
+  20261030-104812
+  20261030-104904
+$ FORCE=1 ./scripts/restore.sh backups/20261030-104904
+  [11:15:39] sauvegarde backups/20261030-104904 vérifiée (date=2026-10-30T10:49:07+01:00 items=9 photos=9)
+  [11:15:39] arrêt de app et cron
+  [11:15:45] restauration de la base
+  [11:15:47] restauration des photos (le volume est vidé avant)
+  [11:15:51] redémarrage
+  [11:15:59] restauration terminée : 9 articles
+  [11:16:00] utilisateur exporter prêt
+$ curl …/  → GestStock — inventaire (9 articles)
+  photo legacy /uploads/p_5a1c2e0f3b7d41.10293847.png → 200 image/png

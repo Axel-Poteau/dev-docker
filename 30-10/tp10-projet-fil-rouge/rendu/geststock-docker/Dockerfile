@@ -31,7 +31,7 @@ RUN mv /tmp/pdo_mysql.so "$(php-config --extension-dir)/" \
  && cp /usr/local/etc/php/php.ini-production /usr/local/etc/php/php.ini \
  # Apache sur 8080 (non-root), sans le site par défaut, avec l'IP réelle du client derrière Traefik
  && sed -i 's/^Listen 80$/Listen 8080/' /etc/apache2/ports.conf \
- && a2dissite -q 000-default && a2enmod -q remoteip \
+ && a2dissite -q 000-default && a2enmod -q remoteip rewrite \
  # répertoires écrits à l'exécution par www-data (pid, verrous, photos)
  && install -d -o www-data -g www-data -m 755 /var/www/uploads \
  && chown -R www-data:www-data /var/run/apache2 /var/lock/apache2 \

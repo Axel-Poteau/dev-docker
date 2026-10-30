@@ -1,0 +1,110 @@
+événement=main sha=959964c image=localhost:5000/geststock:sha-959964c
+
+▶ lint
+  ✔ hadolint Dockerfile
+  ✔ shellcheck (scripts d'exploitation)
+  ✔ compose yml:override.yml:mailpit.yml valide
+  ✔ compose yml:prod.yml:hardened.yml valide
+  ✔ compose yml:prod.yml:hardened.yml:observability.yml valide
+  ✔ observability/compose.yml valide
+
+▶ test : étape test du Dockerfile (php -l sur tout le code, apachectl -t, extension pdo_mysql)
+  ✔ tests
+
+▶ build
+  ✔ localhost:5000/geststock:sha-959964c (180M)
+
+▶ intégration : stack prod + durcie éphémère (projet geststock-ci, port 18090)
+  ✔ stack healthy en 33s cumulées
+  Smoke test GestStock sur http://localhost:18090 (Host: geststock.localhost)
+    ✔ ?health : OK (base joignable, route prête en 1s)
+    ✔ POST article « smoke-1793355261 » avec photo
+    ✔ photo servie par l'alias /uploads (/uploads/p_6ae46dfdc6ce44.63055416.png, image/png)
+    ✔ code hors public/ non servi (lib/config.php → 404)
+    ✔ article 5 supprimé
+    ✔ log applicatif JSON sur stderr : article ajouté: smoke-1793355261
+    ✔ rapport à la demande : Articles: 4, quantité totale: 517
+    ✔ mail « Rapport stock 2026-10-30 » reçu par Mailpit (1)
+  OK
+  ✔ audit.sh : aucun écart sur 7 conteneur(s)
+  ✔ stack éphémère supprimée (down -v)
+
+▶ release gate (labels OCI, non-root, HEALTHCHECK, trivy HIGH/CRITICAL corrigeables, secrets)
+  ✔ ACCEPTÉ
+
+▶ push + signature (par digest)
+  ✔ poussé : localhost:5000/geststock@sha256:d514c5a9db0f1c6f98f5682cf916474d9f71b6112961e72bf6e36fb160fc28a0
+  ✔ signé
+
+▶ déploiement (rolling update) — signature vérifiée d'abord
+  ✔ signature vérifiée (git_sha=959964c)
+[11:14:57] projet=geststock version=sha-959964c réplicas=2
+[11:14:58] premier déploiement : stack complète
+ Network geststock_socket  Creating
+ Network geststock_socket  Created
+ Network geststock_mail  Creating
+ Network geststock_mail  Created
+ Network geststock_front  Creating
+ Network geststock_front  Created
+ Volume geststock_uploads  Creating
+ Volume geststock_uploads  Created
+ Volume geststock_dbdata  Creating
+ Volume geststock_dbdata  Created
+ Container geststock-db-1  Creating
+ Container geststock-mailpit-1  Creating
+ Container geststock-socket-proxy-1  Creating
+ Container geststock-mailpit-1  Created
+ Container geststock-db-1  Created
+ Container geststock-cron-1  Creating
+ Container geststock-mysqld-exporter-1  Running
+ Container geststock-app-2  Creating
+ Container geststock-app-1  Creating
+ Container geststock-socket-proxy-1  Created
+ Container geststock-proxy-1  Creating
+ Container geststock-proxy-1  Created
+ Container geststock-cron-1  Created
+ Container geststock-app-1  Created
+ Container geststock-app-2  Created
+ Container geststock-db-1  Starting
+ Container geststock-socket-proxy-1  Starting
+ Container geststock-mailpit-1  Starting
+ Container geststock-socket-proxy-1  Started
+ Container geststock-socket-proxy-1  Waiting
+ Container geststock-db-1  Started
+ Container geststock-db-1  Waiting
+ Container geststock-db-1  Waiting
+ Container geststock-mailpit-1  Started
+ Container geststock-db-1  Waiting
+ Container geststock-mailpit-1  Waiting
+ Container geststock-mailpit-1  Healthy
+ Container geststock-socket-proxy-1  Healthy
+ Container geststock-proxy-1  Starting
+ Container geststock-db-1  Healthy
+ Container geststock-app-1  Starting
+ Container geststock-db-1  Healthy
+ Container geststock-db-1  Healthy
+ Container geststock-cron-1  Starting
+ Container geststock-proxy-1  Started
+ Container geststock-app-1  Started
+ Container geststock-app-2  Starting
+ Container geststock-cron-1  Started
+ Container geststock-app-2  Started
+ Container geststock-cron-1  Waiting
+ Container geststock-mailpit-1  Waiting
+ Container geststock-mysqld-exporter-1  Waiting
+ Container geststock-proxy-1  Waiting
+ Container geststock-app-1  Waiting
+ Container geststock-app-2  Waiting
+ Container geststock-db-1  Waiting
+ Container geststock-socket-proxy-1  Waiting
+ Container geststock-socket-proxy-1  Healthy
+ Container geststock-db-1  Healthy
+ Container geststock-mailpit-1  Healthy
+ Container geststock-mysqld-exporter-1  Healthy
+ Container geststock-cron-1  Healthy
+ Container geststock-app-1  Healthy
+ Container geststock-app-2  Healthy
+ Container geststock-proxy-1  Healthy
+[11:15:22] terminé en 25s
+
+pipeline vert (main) en 94s
