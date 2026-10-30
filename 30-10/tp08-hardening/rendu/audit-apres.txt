@@ -1,0 +1,65 @@
+shop-api-1
+  ✔ user   node
+  ✔ priv   non privilégié
+  ✔ caps   drop ALL, add []
+  ✔ rootfs read-only
+  ✔ mem    256 Mo
+  ✔ pids   100
+  ✔ nnp    no-new-privileges
+  ✔ sock   pas de socket Docker
+shop-api-2
+  ✔ user   node
+  ✔ priv   non privilégié
+  ✔ caps   drop ALL, add []
+  ✔ rootfs read-only
+  ✔ mem    256 Mo
+  ✔ pids   100
+  ✔ nnp    no-new-privileges
+  ✔ sock   pas de socket Docker
+shop-db-1
+  ✔ user   70:70
+  ✔ priv   non privilégié
+  ✔ caps   drop ALL, add []
+  ✔ rootfs read-only
+  ✔ mem    512 Mo
+  ✔ pids   100
+  ✔ nnp    no-new-privileges
+  ✔ sock   pas de socket Docker
+shop-proxy-1
+  ✔ user   65534:65534
+  ✔ priv   non privilégié
+  ✔ caps   drop ALL, add []
+  ✔ rootfs read-only
+  ✔ mem    128 Mo
+  ✔ pids   100
+  ✔ nnp    no-new-privileges
+  ✔ sock   pas de socket Docker
+shop-redis-1
+  ✔ user   redis
+  ✔ priv   non privilégié
+  ✔ caps   drop ALL, add []
+  ✔ rootfs read-only
+  ✔ mem    128 Mo
+  ✔ pids   50
+  ✔ nnp    no-new-privileges
+  ✔ sock   pas de socket Docker
+shop-socket-proxy-1
+  ✔ user   65534:0
+  ✔ priv   non privilégié
+  ✔ caps   drop ALL, add []
+  ✔ rootfs read-only
+  ✔ mem    32 Mo
+  ✔ pids   50
+  ✔ nnp    no-new-privileges
+  ~ sock   socket Docker montée (exception audit.allow)
+shop-worker-1
+  ✔ user   worker
+  ✔ priv   non privilégié
+  ✔ caps   drop ALL, add []
+  ✔ rootfs read-only
+  ✔ mem    128 Mo
+  ✔ pids   50
+  ✔ nnp    no-new-privileges
+  ✔ sock   pas de socket Docker
+
+aucun écart sur 7 conteneur(s)

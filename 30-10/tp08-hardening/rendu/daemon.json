@@ -1,0 +1,28 @@
+{
+  "no-new-privileges": true,
+  "icc": false,
+  "live-restore": true,
+  "userland-proxy": false,
+  "log-driver": "local",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "5"
+  },
+  "userns-remap": "default",
+  "default-ulimits": {
+    "nofile": {
+      "Name": "nofile",
+      "Soft": 65536,
+      "Hard": 65536
+    }
+  },
+  "default-address-pools": [
+    {
+      "base": "10.200.0.0/16",
+      "size": 24
+    }
+  ],
+  "features": {
+    "buildkit": true
+  }
+}

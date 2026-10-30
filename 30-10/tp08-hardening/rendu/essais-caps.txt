@@ -1,0 +1,32 @@
+## PostgreSQL démarré en root (entrypoint officiel : chown PGDATA puis su-exec postgres)
+cap_drop ALL, aucune cap_add       ÉCHEC chmod: /var/lib/postgresql/data: Operation not permitted
++ CHOWN DAC_OVERRIDE FOWNER SETGID SETUID OK    
+  sans CHOWN                       OK    
+  sans DAC_OVERRIDE                ÉCHEC find: /var/lib/postgresql/data: Permission denied
+  sans FOWNER                      OK    
+  sans SETGID                      ÉCHEC error: failed switching to "postgres": operation not permitted
+  sans SETUID                      ÉCHEC error: failed switching to "postgres": operation not permitted
+
+## PostgreSQL démarré directement en uid 70 (pas de chown, pas de changement d'utilisateur)
+--user 70:70, aucune cap_add       OK    
+
+## Traefik : bind :80 sans NET_BIND_SERVICE, en nobody
+  uid=65534(nobody) gid=65534(nobody) groups=65534(nobody)
+  tcp        0      0 :::80                   :::*                    LISTEN      
+
+## Proxy de socket : ce que voit Traefik via tcp://socket-proxy:2375 (config compose.hardened.yml)
+  GET /version                                         → 200
+  GET /containers/json                                 → 200
+  GET /events?since=0&until=1                          → 200
+  GET /images/json                                     → 403
+  GET /secrets                                         → 403
+  GET /containers/shop-db-1/json                       → 200
+  GET /containers/shop-db-1/archive?path=/run/secrets/db_password → 403
+  GET /containers/shop-db-1/logs?stdout=1              → 403
+  POST /containers/create                              → 403
+  POST /containers/shop-api-1/kill                     → 403
+  DELETE /containers/shop-api-1                        → 403
+
+## Pour comparaison : docker-socket-proxy par défaut (CONTAINERS=1, sans la règle ajoutée)
+$ curl "http://socket-proxy:2375/containers/shop-db-1/archive?path=/run/secrets/db_password" | tar -xO
+  ************************  (mot de passe BDD lu en clair, masqué ici)

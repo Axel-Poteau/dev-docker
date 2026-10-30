@@ -1,0 +1,129 @@
+
+### 1. --read-only
+$ docker run --rm --read-only alpine:3.20 touch /x
+  touch: /x: Read-only file system
+  (rc=1)
+$ docker run --rm --read-only --tmpfs /tmp alpine:3.20 sh -c 'touch /tmp/x && ls -l /tmp/x && mount | grep " /tmp "'
+  -rw-r--r--    1 root     root             0 Oct 30 08:43 /tmp/x
+  tmpfs on /tmp type tmpfs (rw,nosuid,nodev,noexec,relatime)
+  (rc=0)
+
+### 2. --cap-drop ALL
+$ docker run --rm alpine:3.20 sh -c 'grep CapEff /proc/self/status'
+  CapEff:	00000000a80425fb
+  (rc=0)
+$ docker run --rm --cap-drop ALL alpine:3.20 sh -c 'grep CapEff /proc/self/status'
+  CapEff:	0000000000000000
+  (rc=0)
+$ docker run --rm --cap-drop ALL alpine:3.20 sh -c 'sysctl net.ipv4.ping_group_range; ping -c1 -W2 172.17.0.1'
+  net.ipv4.ping_group_range = 0	2147483647
+  PING 172.17.0.1 (172.17.0.1): 56 data bytes
+  64 bytes from 172.17.0.1: seq=0 ttl=42 time=0.368 ms
+  
+  --- 172.17.0.1 ping statistics ---
+  1 packets transmitted, 1 packets received, 0% packet loss
+  round-trip min/avg/max = 0.368/0.368/0.368 ms
+  (rc=0)
+$ docker run --rm --cap-drop ALL --sysctl net.ipv4.ping_group_range='1 0' alpine:3.20 ping -c1 -W2 172.17.0.1
+  PING 172.17.0.1 (172.17.0.1): 56 data bytes
+  ping: permission denied (are you root?)
+  (rc=1)
+$ docker run --rm --cap-drop ALL --cap-add NET_RAW --sysctl net.ipv4.ping_group_range='1 0' alpine:3.20 ping -c1 -W2 172.17.0.1
+  PING 172.17.0.1 (172.17.0.1): 56 data bytes
+  64 bytes from 172.17.0.1: seq=0 ttl=64 time=0.556 ms
+  
+  --- 172.17.0.1 ping statistics ---
+  1 packets transmitted, 1 packets received, 0% packet loss
+  round-trip min/avg/max = 0.556/0.556/0.556 ms
+  (rc=0)
+$ docker run --rm --cap-drop ALL alpine:3.20 sh -c 'sysctl net.ipv4.ip_unprivileged_port_start; nc -l -p 80 & sleep 1; netstat -ltn | grep :80'
+  net.ipv4.ip_unprivileged_port_start = 0
+  tcp        0      0 :::80                   :::*                    LISTEN      
+  (rc=0)
+$ docker run --rm --cap-drop ALL alpine:3.20 chown nobody /etc/hosts
+  chown: /etc/hosts: Operation not permitted
+  (rc=1)
+$ docker run --rm --cap-drop ALL --cap-add CHOWN alpine:3.20 sh -c 'touch /f && chown nobody /f && ls -l /f'
+  -rw-r--r--    1 nobody   root             0 Oct 30 08:43 /f
+  (rc=0)
+$ docker run --rm --cap-drop ALL alpine:3.20 sh -c 'apk add -q --no-cache curl && curl --version | head -1'
+  curl 8.14.1 (x86_64-alpine-linux-musl) libcurl/8.14.1 OpenSSL/3.3.7 zlib/1.3.2 brotli/1.1.0 zstd/1.5.6 c-ares/1.33.1 libidn2/2.3.7 libpsl/0.21.5 nghttp2/1.62.1
+  (rc=0)
+$ docker run --rm --cap-drop ALL --cap-add CHOWN alpine:3.20 sh -c 'mkdir -m 700 /d && chown nobody /d && touch /d/f'
+  touch: /d/f: Permission denied
+  (rc=1)
+$ docker run --rm --cap-drop ALL --cap-add CHOWN --cap-add DAC_OVERRIDE alpine:3.20 sh -c 'mkdir -m 700 /d && chown nobody /d && touch /d/f && echo écriture OK'
+  écriture OK
+  (rc=0)
+
+### 3. --security-opt no-new-privileges
+$ docker run --rm debian:12.7-slim ls -l /usr/bin/passwd /usr/bin/su
+  -rwsr-xr-x 1 root root 68248 Mar 23  2023 /usr/bin/passwd
+  -rwsr-xr-x 1 root root 72000 Mar 28  2024 /usr/bin/su
+  (rc=0)
+$ docker run --rm debian:12.7-slim sh -c 'cp /usr/bin/id /usr/local/bin/suid-id && chmod u+s /usr/local/bin/suid-id && setpriv --reuid 65534 --regid 65534 --clear-groups /usr/local/bin/suid-id'
+  uid=65534(nobody) gid=65534(nogroup) euid=0(root) groups=65534(nogroup)
+  (rc=0)
+$ docker run --rm --security-opt no-new-privileges debian:12.7-slim sh -c 'cp /usr/bin/id /usr/local/bin/suid-id && chmod u+s /usr/local/bin/suid-id && setpriv --reuid 65534 --regid 65534 --clear-groups /usr/local/bin/suid-id'
+  uid=65534(nobody) gid=65534(nogroup) groups=65534(nogroup)
+  (rc=0)
+$ docker run --rm --security-opt no-new-privileges debian:12.7-slim grep NoNewPrivs /proc/self/status
+  NoNewPrivs:	1
+  (rc=0)
+
+### 4. --pids-limit 50
+$ docker run --rm --pids-limit 50 alpine:3.20 sh -c 'for i in $(seq 100); do sleep 60 & done; sleep 1; ps | wc -l'
+  sh: can't fork: Resource temporarily unavailable
+  (rc=2)
+$ docker run --rm alpine:3.20 sh -c 'for i in $(seq 100); do sleep 60 & done; sleep 1; ps | wc -l'
+  104
+  (rc=0)
+
+### 5. --memory 32m
+$ docker run --name oom-test --memory 32m --memory-swap 32m python:3.12-alpine python -c "x='a'*100_000_000"
+  (rc=137)
+$ docker inspect oom-test --format 'OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}}'
+  OOMKilled=true ExitCode=137
+  (rc=0)
+$ docker run --rm --memory 128m python:3.12-alpine python -c "x='a'*100_000_000; print(len(x))"
+  100000000
+  (rc=0)
+
+### 6. --user 1000
+$ docker run --rm --user 1000 alpine:3.20 id
+  uid=1000 gid=0(root) groups=0(root)
+  (rc=0)
+$ docker run --rm -v exp-data:/data alpine:3.20 sh -c 'echo root > /data/f && ls -ln /data'
+  total 4
+  -rw-r--r--    1 0        0                5 Oct 30 08:43 f
+  (rc=0)
+$ docker run --rm --user 1000 -v exp-data:/data alpine:3.20 sh -c 'echo app >> /data/f'
+  sh: can't create /data/f: Permission denied
+  (rc=1)
+$ docker run --rm -v exp-data:/data alpine:3.20 chown -R 1000:1000 /data
+  (rc=0)
+$ docker run --rm --user 1000 -v exp-data:/data alpine:3.20 sh -c 'echo app >> /data/f && cat /data/f'
+  root
+  app
+  (rc=0)
+
+### 7. seccomp
+$ docker run --rm alpine:3.20 unshare --user id
+  unshare: unshare(0x10000000): Operation not permitted
+  (rc=1)
+$ docker run --rm --security-opt seccomp=unconfined alpine:3.20 unshare --user id
+  uid=65534(nobody) gid=65534(nobody) groups=65534(nobody),65534(nobody),65534(nobody),65534(nobody),65534(nobody),65534(nobody),65534(nobody),65534(nobody),65534(nobody),65534(nobody),65534(nobody)
+  (rc=0)
+$ docker run --rm alpine:3.20 grep Seccomp /proc/self/status
+  Seccomp:	2
+  Seccomp_filters:	1
+  (rc=0)
+$ docker run --rm --security-opt seccomp=unconfined alpine:3.20 grep Seccomp /proc/self/status
+  Seccomp:	0
+  Seccomp_filters:	0
+  (rc=0)
+profil par défaut : defaultAction=SCMP_ACT_ERRNO (EPERM pour tout ce qui n'est pas listé)
+  appels système x86_64 du noyau             : 373
+  autorisés sans condition                   : 294
+  non autorisés sans condition               : 79  (dont certains rouverts par une capacité ou un filtre d'argument)
+  exemples : add_key,bpf,clock_settime,init_module,kexec_load,keyctl,mount,open_by_handle_at,perf_event_open,ptrace,reboot,setns,swapon,umount2,unshare,userfaultfd

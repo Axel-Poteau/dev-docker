@@ -1,0 +1,138 @@
+# Surcharge DURCIE de la stack TP04 (CIS Docker Benchmark, section 5).
+#   T=../../../29-10/tp04-compose-entreprise/rendu
+#   docker compose -f $T/compose.yml -f $T/compose.prod.yml -f compose.hardened.yml up -d --wait
+# (cf. hardened.sh). Chaque directive est annotée de la menace qu'elle réduit.
+
+x-hardening: &hardening
+  # rootfs en lecture seule : un attaquant qui obtient une exécution de code ne peut ni déposer
+  # un binaire/webshell persistant, ni modifier l'application ou ses bibliothèques
+  read_only: true
+  # aucune capacité noyau : ni chown, ni kill d'autres uid, ni socket raw, ni mknod…
+  # (ping et bind < 1024 restent possibles sans capacité, cf. experiences.txt §2)
+  cap_drop: [ALL]
+  # !override : la surcharge prod pose déjà no-new-privileges, une simple fusion le dupliquerait
+  security_opt: !override
+    # un binaire setuid/setgid (ou une capacité fichier) ne peut plus élever les privilèges
+    - no-new-privileges:true
+
+# Limites (deploy.resources.limits) : cpus/memory contre l'épuisement de l'hôte par un service qui fuit,
+# pids contre une fork bomb ou une fuite de threads (le conteneur échoue, pas l'hôte).
+
+services:
+  # Proxy de socket : Traefik ne parle plus à /var/run/docker.sock (équivalent root sur l'hôte : avec
+  # la socket, même en :ro, on peut créer un conteneur --privileged montant /) mais à une API filtrée
+  # par HAProxy : GET seulement (POST=0), et uniquement /containers, /events, /version, /_ping.
+  socket-proxy:
+    <<: *hardening
+    image: tecnativa/docker-socket-proxy:0.3.0
+    restart: unless-stopped
+    # L'entrypoint d'origine réécrit haproxy.cfg dans /usr/local/etc : incompatible avec read_only.
+    # On génère la configuration dans le tmpfs, en ajoutant une règle : CONTAINERS=1 ouvre TOUT
+    # /containers/* en GET, dont /containers/<id>/archive (lecture de /run/secrets/* de n'importe quel
+    # conteneur) et /logs. Traefik n'a besoin que de la liste et de l'inspection (cf. essais-caps.txt).
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        sed -e 's/$${BIND_CONFIG}/:2375/' \
+            -e '/http-request deny unless METH_GET/a\    http-request deny if { path,url_dec -m reg -i ^(/v[\\d\\.]+)?/containers/ } !{ path,url_dec -m reg -i ^(/v[\\d\\.]+)?/containers/([a-zA-Z0-9_.-]+/)?json$$ }' \
+            /usr/local/etc/haproxy/haproxy.cfg.template > /tmp/haproxy.cfg
+        exec haproxy -W -db -f /tmp/haproxy.cfg
+    command: []
+    # uid nobody ; gid 0 car la socket est root:root 660 : seul le droit de groupe sur la socket est utilisé
+    user: "65534:0"
+    tmpfs:
+      - /tmp:size=1m,mode=1777,noexec,nosuid,nodev
+      - /run:size=1m,mode=1777,noexec,nosuid,nodev
+    environment:
+      CONTAINERS: 1
+      EVENTS: 1
+      VERSION: 1
+      PING: 1
+      POST: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - socket
+    labels:
+      # exception documentée : c'est le seul conteneur autorisé à voir la socket
+      audit.allow: sock
+    deploy:
+      resources:
+        limits: {cpus: "0.25", memory: 32M, pids: 50}
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:2375/_ping | grep -q OK"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  proxy:
+    <<: *hardening
+    # aucun chemin sur l'hôte : la socket Docker n'est plus montée
+    volumes: !reset []
+    # utilisateur nobody : une RCE dans Traefik ne donne plus root dans le conteneur
+    user: "65534:65534"
+    # :80 sans NET_BIND_SERVICE : Docker pose net.ipv4.ip_unprivileged_port_start=0 dans le conteneur
+    cap_add: !reset []
+    environment:
+      TRAEFIK_PROVIDERS_DOCKER_ENDPOINT: tcp://socket-proxy:2375
+    networks:
+      - front
+      - socket
+    depends_on:
+      socket-proxy:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits: {cpus: "0.50", memory: 128M, pids: 100}
+
+  api:
+    <<: *hardening
+    # seul répertoire inscriptible, en mémoire, sans exécution de binaire (!override : remplace le /tmp de prod)
+    tmpfs: !override
+      - /tmp:size=16m,mode=1777,noexec,nosuid,nodev
+    deploy:
+      resources:
+        limits: {cpus: "0.50", memory: 256M, pids: 100}
+        reservations: {memory: 64M}
+
+  worker:
+    <<: *hardening
+    # seul répertoire inscriptible, en mémoire, sans exécution de binaire (!override : remplace le /tmp de prod)
+    tmpfs: !override
+      - /tmp:size=16m,mode=1777,noexec,nosuid,nodev
+    deploy:
+      resources:
+        limits: {cpus: "0.50", memory: 128M, pids: 50}
+
+  # PostgreSQL démarre directement en uid 70 : l'entrypoint n'a plus rien à chown/su-exec,
+  # il ne lui faut donc AUCUNE capacité (au lieu de CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID en root).
+  # Prérequis : le volume pgdata appartient déjà à 70:70 (vrai pour un volume nommé initialisé par l'image).
+  db:
+    <<: *hardening
+    user: "70:70"
+    cap_add: !reset []
+    tmpfs:
+      - /tmp:size=16m,mode=1777,noexec,nosuid,nodev
+      # socket unix et fichier de verrou de postgres
+      - /var/run/postgresql:size=1m,uid=70,gid=70,mode=2775,noexec,nosuid,nodev
+    shm_size: 128m
+    deploy:
+      resources:
+        limits: {cpus: "1.0", memory: 512M, pids: 100}
+
+  redis:
+    <<: *hardening
+    user: redis
+    deploy:
+      resources:
+        limits: {cpus: "0.50", memory: 128M, pids: 50}
+
+networks:
+  # réseau dédié proxy ↔ socket-proxy, sans accès externe : l'API Docker filtrée n'est joignable que par Traefik
+  socket:
+    internal: true

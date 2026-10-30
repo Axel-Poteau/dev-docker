@@ -1,0 +1,13 @@
+## icc=false : simulé sur un bridge dédié (option com.docker.network.bridge.enable_icc=false)
+## — c'est exactement ce que fait "icc": false du daemon.json, mais pour le seul bridge par défaut
+icc-on   conteneur → conteneur (même réseau) : pong
+icc-off  conteneur → conteneur (même réseau) : BLOQUÉ (timeout)
+icc-off  hôte → port publié                    : pong
+
+## Réseaux de la stack : ce sont des bridges utilisateur → "icc": false du daemon ne les concerne pas
+shop_front driver=bridge internal=false enable_icc=
+shop_back driver=bridge internal=true enable_icc=
+shop_socket driver=bridge internal=true enable_icc=
+
+## Options actuelles du daemon (Docker Desktop)
+LiveRestore=false LoggingDriver=json-file SecurityOptions=["name=seccomp,profile=builtin","name=cgroupns"]

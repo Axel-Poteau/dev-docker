@@ -1,0 +1,47 @@
+shop-api-1
+  ✔ user   node
+  ✔ priv   non privilégié
+  ✘ caps   capabilités par défaut conservées (drop [], add [])
+  ✘ rootfs rootfs inscriptible
+  ✘ mem    aucune limite mémoire
+  ✘ pids   aucune limite de PID
+  ✘ nnp    no-new-privileges absent
+  ✔ sock   pas de socket Docker
+shop-db-1
+  ✘ user   root (USER='')
+  ✔ priv   non privilégié
+  ✘ caps   capabilités par défaut conservées (drop [], add [])
+  ✘ rootfs rootfs inscriptible
+  ✘ mem    aucune limite mémoire
+  ✘ pids   aucune limite de PID
+  ✘ nnp    no-new-privileges absent
+  ✔ sock   pas de socket Docker
+shop-proxy-1
+  ✘ user   root (USER='')
+  ✔ priv   non privilégié
+  ✘ caps   capabilités par défaut conservées (drop [], add [])
+  ✘ rootfs rootfs inscriptible
+  ✘ mem    aucune limite mémoire
+  ✘ pids   aucune limite de PID
+  ✘ nnp    no-new-privileges absent
+  ✘ sock   socket Docker montée
+shop-redis-1
+  ✘ user   root (USER='')
+  ✔ priv   non privilégié
+  ✘ caps   capabilités par défaut conservées (drop [], add [])
+  ✘ rootfs rootfs inscriptible
+  ✘ mem    aucune limite mémoire
+  ✘ pids   aucune limite de PID
+  ✘ nnp    no-new-privileges absent
+  ✔ sock   pas de socket Docker
+shop-worker-1
+  ✔ user   worker
+  ✔ priv   non privilégié
+  ✘ caps   capabilités par défaut conservées (drop [], add [])
+  ✘ rootfs rootfs inscriptible
+  ✘ mem    aucune limite mémoire
+  ✘ pids   aucune limite de PID
+  ✘ nnp    no-new-privileges absent
+  ✔ sock   pas de socket Docker
+
+29 écart(s) sur 5 conteneur(s)
