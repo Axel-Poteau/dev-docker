@@ -1,0 +1,130 @@
+# Observabilité Shop SAS — projet séparé, lancé À CÔTÉ de la stack du TP04 (projet « shop »).
+#   docker compose -f compose.observability.yml up -d --wait
+#   Prometheus http://127.0.0.1:9090 · Grafana http://127.0.0.1:3001 (admin / admin, lab uniquement)
+name: observability
+
+x-defaults: &defaults
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: {max-size: "10m", max-file: "3"}
+
+services:
+  prometheus:
+    <<: *defaults
+    image: prom/prometheus:v2.54.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - tp07-prometheus:/prometheus
+    ports: ["127.0.0.1:9090:9090"]
+    # rejoint les réseaux de la stack : la découverte DNS « api » / « worker » passe par le DNS embarqué
+    networks: [obs, shop_front, shop_back]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9090/-/ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  cadvisor:
+    <<: *defaults
+    image: gcr.io/cadvisor/cadvisor:v0.52.1
+    # Docker Desktop (containerd image store) : la fabrique docker de cAdvisor échoue (« failed to identify the
+    # read-write layer ID ») ; on la neutralise et la fabrique « raw » publie les cgroups /docker/<id>, sans nom.
+    # Les noms sont rattachés par docker-meta (docker_container_info). Sur un Linux overlay2 : --docker_only=true.
+    command: ["--docker_only=false", "--raw_cgroup_prefix_whitelist=/docker/", "--docker=unix:///nonexistent.sock",
+              "--containerd=/nonexistent.sock", "--housekeeping_interval=10s", "--store_container_labels=false"]
+    privileged: true
+    cgroup: host
+    devices: ["/dev/kmsg"]
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks: [obs]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Petit exporteur maison : id → nom/service compose, nombre de redémarrages, OOMKilled (API Docker en lecture).
+  docker-meta:
+    <<: *defaults
+    image: python:3.12.7-alpine3.20
+    command: ["python", "-u", "/app/docker_meta.py"]
+    volumes:
+      - ./docker-meta:/app:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [obs]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9417/metrics', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  loki:
+    <<: *defaults
+    image: grafana/loki:3.1.1
+    command: ["-config.file=/etc/loki/loki.yml"]
+    volumes:
+      - ./loki/loki.yml:/etc/loki/loki.yml:ro
+      - tp07-loki:/loki
+    networks: [obs]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3100/ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  promtail:
+    <<: *defaults
+    image: grafana/promtail:3.1.1
+    command: ["-config.file=/etc/promtail/promtail.yml"]
+    volumes:
+      - ./promtail/promtail.yml:/etc/promtail/promtail.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro      # docker_sd_configs + lecture des logs par l'API
+      - tp07-promtail:/positions
+    networks: [obs]
+    depends_on:
+      loki: {condition: service_healthy}
+
+  grafana:
+    <<: *defaults
+    image: grafana/grafana:11.2.0
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin             # lab : en vrai, GF_SECURITY_ADMIN_PASSWORD__FILE + secret
+      GF_AUTH_ANONYMOUS_ENABLED: "true"             # lecture seule anonyme : captures d'écran sans session
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_USERS_DEFAULT_THEME: light
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - tp07-grafana:/var/lib/grafana
+    ports: ["127.0.0.1:3001:3000"]
+    networks: [obs]
+    depends_on:
+      prometheus: {condition: service_healthy}
+      loki: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+networks:
+  obs: {}
+  shop_front: { external: true }
+  shop_back:  { external: true }
+
+# noms distincts : le projet du TP10 s'appelle aussi « observability »
+volumes:
+  tp07-prometheus:
+  tp07-loki:
+  tp07-promtail:
+  tp07-grafana:

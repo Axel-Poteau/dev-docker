@@ -1,0 +1,77 @@
+[16:49:44] $ docker stats --no-stream --format 'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}\t{{.PIDs}}' $(docker ps -q --filter label=com.docker.compose.project=shop)
+NAME            CPU %     MEM USAGE / LIMIT     NET I/O           PIDS
+shop-worker-1   0.01%     20.54MiB / 1.803GiB   5.09kB / 3.47kB   2
+shop-api-1      0.36%     56.02MiB / 1.803GiB   37.7kB / 67.2kB   17
+shop-db-1       3.19%     10.89MiB / 1.803GiB   7.76kB / 26.6kB   8
+shop-redis-1    0.38%     2.918MiB / 1.803GiB   35.5kB / 9.78kB   6
+shop-proxy-1    10.45%    39.99MiB / 1.803GiB   36.1kB / 52.6kB   13
+
+[16:49:47] $ docker system df
+TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE
+Images          105       16        22.72GB   13.32GB (58%)
+Containers      22        20        177.1MB   176MB (99%)
+Local Volumes   27        12        10.75GB   2.542GB (23%)
+Build Cache     153       0         413.9MB   413.9MB
+
+[16:49:50] $ docker system df -v | grep -E '^VOLUME NAME|^shop_'
+VOLUME NAME                                                        LINKS     SIZE
+shop_redisdata                                                     1         146.3kB
+shop_pgdata                                                        1         73.24MB
+
+[16:49:53] $ docker update --memory 64m --memory-swap 64m shop-api-1 && docker inspect shop-api-1 --format 'limite={{.HostConfig.Memory}} restart={{.HostConfig.RestartPolicy.Name}}'
+shop-api-1
+limite=67108864 restart=unless-stopped
+
+[16:49:53] $ ./load.sh 20000 100
+Unable to find image 'williamyeh/hey:latest' locally
+latest: Pulling from williamyeh/hey
+1bea00097d8d: Pulling fs layer
+921b31ab772b: Pulling fs layer
+921b31ab772b: Download complete
+921b31ab772b: Pull complete
+1bea00097d8d: Download complete
+1bea00097d8d: Pull complete
+Digest: sha256:6e63ae9c5801204cf7abe22c9ddf82d1bcbc7140ffd206a9bd83a8a643dcd6f2
+Status: Downloaded newer image for williamyeh/hey:latest
+  Requests/sec:	250.2004
+  3.911 [611]	|■■
+  7.782 [189]	|■
+  95% in 2.4833 secs
+  99% in 7.5845 secs
+Status code distribution:
+  [200]	15195 responses
+Error distribution:
+
+[16:51:17] $ docker stats --no-stream --format '{{.Name}} {{.MemUsage}}' shop-api-1
+shop-api-1 16.89MiB / 64MiB
+
+[16:51:19] $ docker inspect shop-api-1 --format 'OOMKilled={{.State.OOMKilled}} RestartCount={{.RestartCount}}'
+OOMKilled=true RestartCount=0
+
+[16:51:29] $ docker events --since 5m --until 0s --filter container=shop-api-1 --format '{{.Time}} {{.Action}} {{.Actor.Attributes.exitCode}}' | grep -vE 'exec_' | awk '{ $1=strftime("%H:%M:%S",$1); print }'
+16:50:58 health_status: unhealthy <no value>
+16:51:16 oom <no value>
+
+[16:51:29] $ docker inspect shop-api-1 --format 'StartedAt={{.State.StartedAt}} Status={{.State.Status}} Health={{.State.Health.Status}}'
+StartedAt=2026-10-30T15:49:06.023700969Z Status=running Health=unhealthy
+
+[16:51:29] $ docker logs --since 4m shop-api-1 2>&1 | grep -E 'démarré|heap|Killed' | cut -c1-160 | tail -4
+{"level":30,"time":1793375347546,"pid":12,"hostname":"329f244f905e","port":"3000","msg":"shopapi démarré"}
+
+[16:55:10] $ docker logs shop-api-1 2>&1 | grep -vE '^\{' | tail -4
+Failed running 'src/server.js'
+
+[16:55:10] $ docker top shop-api-1 -o pid,args
+PID                 COMMAND
+9281                node --watch src/server.js
+
+[16:55:10] $ docker inspect shop-api-1 --format 'Status={{.State.Status}} Health={{.State.Health.Status}} OOMKilled={{.State.OOMKilled}} RestartCount={{.RestartCount}}'
+Status=running Health=unhealthy OOMKilled=true RestartCount=0
+
+[16:55:10] $ curl -s localhost:9090/api/v1/alerts | jq -r '.data.alerts[] | "\(.labels.alertname) \(.state) \(.annotations.summary)"'
+ApiDown firing API injoignable (172.30.0.3:3000)
+ConteneurOOMKilled firing shop-api-1 : processus tué par manque de mémoire (OOM)
+
+[16:55:10] $ docker restart shop-api-1 >/dev/null; sleep 8; docker inspect shop-api-1 --format 'Health={{.State.Health.Status}} limite={{.HostConfig.Memory}}'
+Health=healthy limite=67108864
+

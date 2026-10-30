@@ -1,0 +1,37 @@
+[16:59:31] panne injectée (par « le formateur ») : mot de passe de l'utilisateur shop changé dans PostgreSQL, puis redémarrage de l'API
+--- diagnostic depuis Grafana / Prometheus / Loki uniquement ---
+[17:06:31] $ curl -s localhost:9090/api/v1/alerts | jq -r '.data.alerts[] | "\(.labels.alertname) \(.state) \(.annotations.summary)"'
+ApiErreurs5xx firing 97.04% de réponses 5xx sur l'API
+
+[17:06:31] $ q 'sum by (status) (rate(http_request_duration_seconds_count{job="api"}[1m]))'
+{"m":{"status":"200"},"v":"0.10001200144017283"}
+{"m":{"status":"404"},"v":"1.5001800216025925"}
+{"m":{"status":"500"},"v":"41.62499499939993"}
+{"m":{"status":"503"},"v":"0.10001200144017283"}
+
+[17:06:31] $ q 'docker_container_healthy{project="shop"}'
+{"m":{"name":"shop-worker-1","project":"shop","service":"worker"},"v":"1"}
+{"m":{"name":"shop-api-1","project":"shop","service":"api"},"v":"0"}
+{"m":{"name":"shop-db-1","project":"shop","service":"db"},"v":"1"}
+{"m":{"name":"shop-redis-1","project":"shop","service":"redis"},"v":"1"}
+{"m":{"name":"shop-proxy-1","project":"shop","service":"proxy"},"v":"1"}
+
+[17:06:31] $ lq '{project="shop", level="50"} | json | line_format "{{.err_message}}"' 3
+{"service":"api","level":"50"} password authentication failed for user "shop"
+{"service":"api","level":"50"} password authentication failed for user "shop"
+{"service":"api","level":"50"} password authentication failed for user "shop"
+
+[17:06:31] $ curl -s --get localhost:3001/api/datasources/proxy/uid/loki/loki/api/v1/query -u admin:admin --data-urlencode 'query=sum by (service) (count_over_time({project="shop"} |= "password authentication failed" [5m]))' | jq -c '.data.result[] | {service:.metric.service, lignes:.value[1]}'
+{"service":"api","lignes":"2410"}
+{"service":"db","lignes":"2436"}
+
+--- remise en état ---
+[17:18:42] $ docker exec shop-db-1 sh -c 'psql -U shop -d shop -qc "ALTER USER shop PASSWORD '\''$(cat /run/secrets/db_password)'\''"' && docker restart shop-api-1 >/dev/null; sleep 10; docker inspect shop-api-1 --format 'api : {{.State.Health.Status}}'
+api : healthy
+
+[17:18:53] $ curl -s -o /dev/null -w '%{http_code}\n' -H 'Host: api.localhost' localhost:8088/products
+200
+
+[17:18:53] $ sleep 45; curl -s localhost:9090/api/v1/alerts | jq -r '.data.alerts[] | "\(.labels.alertname) \(.state)"' | grep . || echo 'aucune alerte active'
+aucune alerte active
+

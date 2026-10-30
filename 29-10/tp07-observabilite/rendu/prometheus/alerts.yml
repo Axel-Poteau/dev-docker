@@ -1,0 +1,42 @@
+groups:
+  - name: shop
+    rules:
+      # Série « présente » même quand tous les réplicas ont disparu du DNS : absent() couvre l'arrêt complet.
+      - alert: ApiDown
+        expr: up{job="api"} == 0 or absent(up{job="api"})
+        for: 30s
+        labels: {severity: critical}
+        annotations: {summary: "API injoignable ({{ $labels.instance }})"}
+
+      - alert: ApiErreurs5xx
+        expr: |
+          sum(rate(http_request_duration_seconds_count{job="api",status=~"5.."}[1m]))
+            / sum(rate(http_request_duration_seconds_count{job="api"}[1m])) > 0.05
+        for: 30s
+        labels: {severity: critical}
+        annotations: {summary: "{{ $value | humanizePercentage }} de réponses 5xx sur l'API"}
+
+      - alert: ApiLatenceP95
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job="api"}[1m]))) > 0.5
+        for: 30s
+        labels: {severity: warning}
+        annotations: {summary: "p95 API = {{ $value | humanizeDuration }}"}
+
+      - alert: ConteneurRedemarre
+        expr: increase(docker_container_restart_count[5m]) > 0
+        labels: {severity: warning}
+        annotations: {summary: "{{ $labels.name }} a redémarré {{ $value | humanize }} fois en 5 min"}
+
+      - alert: ConteneurOOMKilled
+        expr: docker_container_oom_killed == 1
+        labels: {severity: warning}
+        annotations: {summary: "{{ $labels.name }} : processus tué par manque de mémoire (OOM)"}
+
+      - alert: MemoireProcheLimite
+        expr: |
+          ((container_memory_working_set_bytes / (container_spec_memory_limit_bytes > 0 < 1e15)) > 0.9)
+            * on (id) group_left (name, service) docker_container_info
+        for: 30s
+        labels: {severity: warning}
+        annotations: {summary: "{{ $labels.name }} à {{ $value | humanizePercentage }} de sa limite mémoire"}

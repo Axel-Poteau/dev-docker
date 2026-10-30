@@ -1,0 +1,38 @@
+global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+
+rule_files: [/etc/prometheus/alerts.yml]
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs: [{targets: ["localhost:9090"]}]
+
+  # Découverte DNS : « api » renvoie une adresse par réplica (DNS embarqué, réseau shop_front).
+  # Pas de docker_sd_configs : Prometheus tourne en nobody (uid 65534) et n'a pas accès à la socket,
+  # et lui donner la socket = lui donner root sur l'hôte.
+  - job_name: api
+    dns_sd_configs:
+      - names: [api]
+        type: A
+        port: 3000
+        refresh_interval: 15s
+    relabel_configs:
+      - {target_label: service, replacement: api}
+
+  - job_name: worker
+    dns_sd_configs:
+      - names: [worker]
+        type: A
+        port: 9100
+        refresh_interval: 15s
+    relabel_configs:
+      - {target_label: service, replacement: worker}
+
+  - job_name: cadvisor
+    static_configs: [{targets: ["cadvisor:8080"]}]
+    metric_relabel_configs:
+      - {source_labels: [id], regex: "/docker/.+", action: keep}
+
+  - job_name: docker-meta
+    static_configs: [{targets: ["docker-meta:9417"]}]

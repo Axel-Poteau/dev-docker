@@ -1,0 +1,33 @@
+[16:49:25] $ docker logs --since 5m --timestamps shop-api-1 2>&1 | tail -2 | cut -d' ' -f2- | jq -c '{level,msg,url:.req.url,status:.res.statusCode,ms:.responseTime}'
+{"level":30,"msg":"request completed","url":"/products","status":200,"ms":35}
+{"level":30,"msg":"request completed","url":"/nope","status":404,"ms":3}
+
+[16:49:25] $ docker inspect shop-api-1 --format '{{json .HostConfig.LogConfig}}'
+{"Type":"json-file","Config":{"max-file":"3","max-size":"10m"}}
+
+[16:49:25] $ id=$(docker inspect shop-api-1 -f '{{.Id}}'); docker run --rm --privileged --pid host alpine:3.20 nsenter -t 1 -m -- ls -la /var/lib/docker/containers/$id/ | sed "s/$id/<id>/g"
+total 52
+drwx--x---  4 root root 4096 Oct 30 15:49 .
+drwx--x--- 25 root root 4096 Oct 30 15:49 ..
+-rw-r-----  1 root root 4546 Oct 30 15:49 <id>-json.log
+drwx------  2 root root 4096 Oct 30 15:48 checkpoints
+-rw-------  1 root root 7443 Oct 30 15:49 config.v2.json
+-rw-------  1 root root 1938 Oct 30 15:49 hostconfig.json
+-rw-r--r--  1 root root   13 Oct 30 15:49 hostname
+-rw-r--r--  1 root root  196 Oct 30 15:49 hosts
+drwx--x---  2 root root 4096 Oct 30 15:49 mounts
+-rw-r--r--  1 root root  312 Oct 30 15:49 resolv.conf
+-rw-r--r--  1 root root   71 Oct 30 15:49 resolv.conf.hash
+
+[16:49:26] $ id=$(docker inspect shop-api-1 -f '{{.Id}}'); docker run --rm --privileged --pid host alpine:3.20 nsenter -t 1 -m -- tail -c 300 /var/lib/docker/containers/$id/$id-json.log
+x-powered-by\":\"Express\",\"content-security-policy\":\"default-src 'none'\",\"x-content-type-options\":\"nosniff\",\"content-type\":\"text/html; charset=utf-8\",\"content-length\":143}},\"responseTime\":3,\"msg\":\"request completed\"}\n","stream":"stdout","time":"2026-10-30T15:49:25.525412957Z"}
+
+[16:49:28] $ docker run --name nolog --log-driver none alpine:3.20 echo 'pas loggé'; docker logs nolog; docker rm nolog >/dev/null
+pas loggé
+Error response from daemon: configured logging driver does not support reading
+
+[16:49:29] $ docker run --rm --privileged --pid host alpine:3.20 nsenter -t 1 -m -- sh -c 'du -sh /var/lib/docker/containers/*/*-json.log 2>/dev/null | sort -h | tail -3'
+2.2M	/var/lib/docker/containers/5fea8a0d881f19a52818f6b23ec7a9935d507b66f3e6bb2a0d0b8ca8785a5c6c/5fea8a0d881f19a52818f6b23ec7a9935d507b66f3e6bb2a0d0b8ca8785a5c6c-json.log
+2.4M	/var/lib/docker/containers/0996ee89a8e44217a14ca4710c0a46d5094f875631c29cd97f00a22fbe23cc41/0996ee89a8e44217a14ca4710c0a46d5094f875631c29cd97f00a22fbe23cc41-json.log
+6.2M	/var/lib/docker/containers/f71fad0deee2584c6482c0ab459169ebb839cda7dee6d888adb4aaf7a8d7c9f0/f71fad0deee2584c6482c0ab459169ebb839cda7dee6d888adb4aaf7a8d7c9f0-json.log
+

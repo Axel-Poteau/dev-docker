@@ -1,0 +1,31 @@
+# Essai 1 de l exercice 4 : base arrêtée sous charge (diagnostic dans le RAPPORT, §4)
+[16:56:35] panne injectée : docker stop shop-db-1
+--- diagnostic sans docker : uniquement Prometheus / Loki (mêmes requêtes que le tableau de bord) ---
+[16:57:51] $ curl -s localhost:9090/api/v1/alerts | jq -r '.data.alerts[] | "\(.labels.alertname) \(.state) \(.annotations.summary)"'
+ApiDown firing API injoignable (172.30.0.3:3000)
+
+[16:57:51] $ q 'sum by (status) (rate(http_request_duration_seconds_count{job="api"}[1m]))'
+
+[16:57:52] $ q 'docker_container_healthy{project="shop"}'
+{"m":{"name":"shop-worker-1","project":"shop","service":"worker"},"v":"1"}
+{"m":{"name":"shop-api-1","project":"shop","service":"api"},"v":"0"}
+{"m":{"name":"shop-redis-1","project":"shop","service":"redis"},"v":"1"}
+{"m":{"name":"shop-proxy-1","project":"shop","service":"proxy"},"v":"1"}
+
+[16:57:52] $ q 'absent(container_memory_working_set_bytes * on (id) group_left (name) docker_container_info{name="shop-db-1"})'
+{"m":{},"v":"1"}
+
+[16:57:52] $ lq '{project="shop", level="50"}' 2
+
+[16:57:54] $ lq '{service="worker"} |~ "(?i)error|connection"' 2
+
+--- confirmation docker ---
+[16:57:55] $ docker compose -p shop ps -a --format '{{.Name}} {{.Status}}'
+shop-api-1 Up 2 minutes (unhealthy)
+shop-db-1 Exited (0) About a minute ago
+shop-proxy-1 Up 8 minutes (healthy)
+shop-redis-1 Up 8 minutes (healthy)
+shop-worker-1 Up 8 minutes (healthy)
+
+[16:57:56] $ docker events --since 3m --until 0s --filter container=shop-db-1 --format '{{.Action}}' | sort | uniq -c
+

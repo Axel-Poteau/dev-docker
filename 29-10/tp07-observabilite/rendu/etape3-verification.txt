@@ -1,0 +1,39 @@
+[16:54:36] $ docker exec observability-prometheus-1 id
+uid=65534(nobody) gid=65534(nobody) groups=65534(nobody)
+
+[16:54:36] $ curl -s localhost:9090/api/v1/targets | jq -r '.data.activeTargets[] | "\(.labels.job)\t\(.labels.instance)\t\(.health)\t\(.lastError)"'
+api	172.30.0.3:3000	down	Get "http://172.30.0.3:3000/metrics": dial tcp 172.30.0.3:3000: connect: connection refused
+cadvisor	cadvisor:8080	up	
+docker-meta	docker-meta:9417	up	
+prometheus	localhost:9090	up	
+worker	172.28.0.4:9100	up	
+
+[16:54:36] $ q 'docker_container_info{project="shop"}'
+{"m":{"__name__":"docker_container_info","id":"/docker/06ea2db82a9b053c2793ef7377f92b27719a7686f1eb35eaa45f9544b8897ad1","instance":"docker-meta:9417","job":"docker-meta","name":"shop-worker-1","project":"shop","service":"worker"},"v":"1"}
+{"m":{"__name__":"docker_container_info","id":"/docker/329f244f905eba9f2bc8df0a71f9438241a98cc08b38b9d01ef8c04143bce4b2","instance":"docker-meta:9417","job":"docker-meta","name":"shop-api-1","project":"shop","service":"api"},"v":"1"}
+{"m":{"__name__":"docker_container_info","id":"/docker/ed5fa1c10b02f8c4b08d9ee516d2b440bfcd0539d1960fc9284021a9af7e9fd3","instance":"docker-meta:9417","job":"docker-meta","name":"shop-db-1","project":"shop","service":"db"},"v":"1"}
+{"m":{"__name__":"docker_container_info","id":"/docker/19c784f9638b9271b94761d18e0bea010fa8433aff089647f89168207be7b16f","instance":"docker-meta:9417","job":"docker-meta","name":"shop-redis-1","project":"shop","service":"redis"},"v":"1"}
+{"m":{"__name__":"docker_container_info","id":"/docker/080d7db9e0efb11e0b12fe7bc365d228ac42ffecb938fb2a7ec446476a78a3f0","instance":"docker-meta:9417","job":"docker-meta","name":"shop-proxy-1","project":"shop","service":"proxy"},"v":"1"}
+
+[16:54:36] $ q 'container_memory_working_set_bytes * on (id) group_left (name) docker_container_info{project="shop"}'
+{"m":{"id":"/docker/06ea2db82a9b053c2793ef7377f92b27719a7686f1eb35eaa45f9544b8897ad1","instance":"cadvisor:8080","job":"cadvisor","name":"shop-worker-1"},"v":"19177472"}
+{"m":{"id":"/docker/080d7db9e0efb11e0b12fe7bc365d228ac42ffecb938fb2a7ec446476a78a3f0","instance":"cadvisor:8080","job":"cadvisor","name":"shop-proxy-1"},"v":"10309632"}
+{"m":{"id":"/docker/19c784f9638b9271b94761d18e0bea010fa8433aff089647f89168207be7b16f","instance":"cadvisor:8080","job":"cadvisor","name":"shop-redis-1"},"v":"2064384"}
+{"m":{"id":"/docker/329f244f905eba9f2bc8df0a71f9438241a98cc08b38b9d01ef8c04143bce4b2","instance":"cadvisor:8080","job":"cadvisor","name":"shop-api-1"},"v":"5885952"}
+{"m":{"id":"/docker/ed5fa1c10b02f8c4b08d9ee516d2b440bfcd0539d1960fc9284021a9af7e9fd3","instance":"cadvisor:8080","job":"cadvisor","name":"shop-db-1"},"v":"3756032"}
+
+[16:54:36] $ q 'sum by (status) (rate(http_request_duration_seconds_count[1m]))'
+
+[16:54:36] $ lq '{service="api"} | json | level="30"' 2
+{"container":"shop-api-1","detected_level":"30","hostname":"329f244f905e","level":"30","level_extracted":"30","msg":"request completed","pid":"12","project":"shop","req_headers_accept_encoding":"gzip","req_headers_content_type":"text/html","req_headers_host":"api:3000","req_headers_user_agent":"hey/0.0.1","req_id":"10858","req_method":"GET","req_remoteAddress":"::ffff:172.30.0.4","req_remotePort":"41388","req_url":"/products","res_headers_content_length":"28926","res_headers_content_type":"application/json; charset=utf-8","res_headers_etag":"W/\"70fe-PxHp0nKEOQqyV1xN+Jos35AUDCg\"","res_headers_x_cache":"HIT","res_headers_x_powered_by":"Express","res_statusCode":"200","responseTime":"18","service":"api","service_name":"api","stream":"stdout","time":"1793375434205"} {"level":30,"time":1793375434205,"pid":12,"hostname":"329f244f905e","req":{"id":10858,"method":"GET","url":"/products","query":{},"params":{
+{"container":"shop-api-1","detected_level":"30","hostname":"329f244f905e","level":"30","level_extracted":"30","msg":"request completed","pid":"12","project":"shop","req_headers_accept_encoding":"gzip","req_headers_content_type":"text/html","req_headers_host":"api:3000","req_headers_user_agent":"hey/0.0.1","req_id":"10857","req_method":"GET","req_remoteAddress":"::ffff:172.30.0.4","req_remotePort":"41362","req_url":"/products","res_headers_content_length":"28926","res_headers_content_type":"application/json; charset=utf-8","res_headers_etag":"W/\"70fe-PxHp0nKEOQqyV1xN+Jos35AUDCg\"","res_headers_x_cache":"HIT","res_headers_x_powered_by":"Express","res_statusCode":"200","responseTime":"18","service":"api","service_name":"api","stream":"stdout","time":"1793375434205"} {"level":30,"time":1793375434205,"pid":12,"hostname":"329f244f905e","req":{"id":10857,"method":"GET","url":"/products","query":{},"params":{
+
+[16:54:37] $ lq '{service="worker"}' 2
+
+[16:54:37] $ curl -s --get localhost:3001/api/datasources/proxy/uid/loki/loki/api/v1/label/service/values -u admin:admin | jq -c .data
+["api","app","cadvisor","cron","db","grafana","loki","mailpit","mirror","mysqld-exporter","preprod","prometheus","promtail","proxy","redis","registry","socket-proxy","ui"]
+
+[16:54:37] $ curl -s -u admin:admin localhost:3001/api/search?query=Shop | jq -c '.[] | {title,url}'
+{"title":"Shop SAS","url":"/dashboards/f/dg2sx7hta8cn4b/shop-sas"}
+{"title":"Shop SAS — vue d'ensemble","url":"/d/shop/shop-sas-e28094-vue-d-ensemble"}
+
