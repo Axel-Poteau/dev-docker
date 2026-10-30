@@ -1,0 +1,54 @@
+événement=main ref=– sha=9678ed6 tags=sha-9678ed6 plateformes=linux/amd64,linux/arm64
+
+▶ lint : hadolint + docker compose config
+  ✔ hadolint apps/shopapi/Dockerfile
+  ✔ hadolint apps/shop-worker/Dockerfile
+  ✔ compose (dev) valide
+  ✔ compose (prod) valide
+
+▶ test : build de l'étape test (lint + tests unitaires dans le Dockerfile)
+  ✔ tests api
+  ✔ tests worker
+
+▶ build + push multi-arch, provenance + SBOM
+  ✔ localhost:5000/shopapi:{sha-9678ed6} @ sha256:3efbac67e818…
+  ✔ localhost:5000/shop-worker:{sha-9678ed6} @ sha256:e7b57049f2e5…
+
+▶ release gate (labels OCI, non-root, HEALTHCHECK, trivy HIGH/CRITICAL corrigeables, secrets)
+  ✔ gate shopapi : ACCEPTÉ
+  ✔ gate shop-worker : ACCEPTÉ
+
+▶ signature cosign (par digest)
+  ✔ signé shopapi@sha256:3efbac67e818…
+  ✔ signé shop-worker@sha256:e7b57049f2e5…
+
+▶ déploiement preprod (VERSION=sha-9678ed6)
+  ✔ signature vérifiée : shopapi@sha256:3efbac67e818… (git_sha=9678ed6)
+  ✔ signature vérifiée : shop-worker@sha256:e7b57049f2e5… (git_sha=9678ed6)
+[10:20:40] contexte=preprod version=sha-9678ed6 réplicas=2
+ worker Pulling 
+ api Pulling 
+ worker Pulled 
+ api Pulled 
+ Container shop-proxy-1  Running
+ Container shop-db-1  Running
+ Container shop-redis-1  Running
+ Container shop-proxy-1  Waiting
+ Container shop-db-1  Waiting
+ Container shop-redis-1  Waiting
+ Container shop-db-1  Healthy
+ Container shop-redis-1  Healthy
+ Container shop-proxy-1  Healthy
+[10:20:47] nouveau réplica shop-api-5 (sha-9678ed6) : attente healthy…
+[10:20:53] shop-api-5 healthy ; Traefik le prend en compte (3s)
+[10:20:56] arrêt propre de shop-api-4 (SIGTERM, 15s max)
+[10:20:58] nouveau réplica shop-api-6 (sha-9678ed6) : attente healthy…
+[10:21:04] shop-api-6 healthy ; Traefik le prend en compte (3s)
+[10:21:07] arrêt propre de shop-api-3 (SIGTERM, 15s max)
+[10:21:08] worker (consommateur de file : une courte coupure ne perd aucun message)
+shop-api-5	registry.local:5000/shopapi:sha-9678ed6	Up 30 seconds (healthy)
+shop-api-6	registry.local:5000/shopapi:sha-9678ed6	Up 18 seconds (healthy)
+shop-worker-1	registry.local:5000/shop-worker:sha-9678ed6	Up 6 seconds (healthy)
+[10:21:17] terminé en 37s
+
+pipeline vert (main) en 103s

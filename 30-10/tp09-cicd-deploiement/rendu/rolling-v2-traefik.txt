@@ -1,0 +1,6 @@
+$ docker --context preprod logs shop-proxy-1 | grep -v access-log   (pendant le rolling v2, 09:20:40–09:21:15 UTC)
+2026-10-30T09:20:52Z ERR Service defined multiple times with different configurations configuration=["api-shop-02820b68086f…","api-shop-525b11136878…","api-shop-7fea0c4e06d0…"] providerName=docker serviceName=api
+2026-10-30T09:20:52Z ERR error="the service \"api@docker\" does not exist" entryPointName=web routerName=api@docker
+2026-10-30T09:20:56Z ERR Service defined multiple times with different configurations configuration=["api-shop-525b11136878…","api-shop-7fea0c4e06d0…"] providerName=docker serviceName=api
+2026-10-30T09:20:58Z ERR Service defined multiple times with different configurations configuration=["api-shop-525b11136878…","api-shop-7fea0c4e06d0…"] providerName=docker serviceName=api
+2026-10-30T09:21:03Z ERR Service defined multiple times with different configurations configuration=["api-shop-525b11136878…","api-shop-7fea0c4e06d0…","api-shop-b634f08a3f68…"] providerName=docker serviceName=api

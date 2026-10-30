@@ -1,0 +1,9 @@
+$ (compose.prod.yml modifié : healthcheck.interval 2s → 3s)
+$ DOCKER_CONTEXT=preprod VERSION=sha-9678ed6 ./deploy/rolling-update.sh
+[10:24:28] contexte=preprod version=sha-9678ed6 réplicas=2
+[10:24:31] REFUS : les labels Traefik de l'API changent ; pendant la cohabitation, Traefik retirerait le service :
+    <   "traefik.http.services.api.loadbalancer.healthcheck.interval": "2s",
+    >   "traefik.http.services.api.loadbalancer.healthcheck.interval": "3s",
+[10:24:31] → déployer ce changement hors trafic, ou porter la config du service dans le provider fichier de Traefik.
+[10:24:31]   (ALLOW_LABEL_CHANGE=1 pour passer outre, en acceptant l'interruption)
+(rc=3)

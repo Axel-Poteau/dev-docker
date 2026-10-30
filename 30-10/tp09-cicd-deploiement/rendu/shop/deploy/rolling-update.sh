@@ -44,6 +44,20 @@ fi
 # dépendances (db, redis, proxy) : démarrées si absentes, jamais recréées ici
 "${COMPOSE[@]}" up -d --wait --no-recreate proxy db redis
 
+# Garde-fou : Traefik agrège les labels de TOUS les réplicas d'un service. Si l'ancienne et la nouvelle
+# version déclarent le service différemment, il est supprimé tant qu'elles cohabitent (404 sur toute
+# la durée du rolling, cf. rolling-v2-traefik.txt). Un tel changement ne passe pas en rolling.
+traefik_labels() { jq -S 'with_entries(select(.key | startswith("traefik.")))'; }
+new_labels=$("${COMPOSE[@]}" config --format json | jq '.services.api.labels' | traefik_labels)
+old_labels=$(docker inspect -f '{{json .Config.Labels}}' "${old[0]}" | traefik_labels)
+if [[ $new_labels != "$old_labels" && ${ALLOW_LABEL_CHANGE:-0} != 1 ]]; then
+  log "REFUS : les labels Traefik de l'API changent ; pendant la cohabitation, Traefik retirerait le service :"
+  diff <(echo "$old_labels") <(echo "$new_labels") | grep '^[<>]' | sed 's/^/    /' >&2 || true
+  log "→ déployer ce changement hors trafic, ou porter la config du service dans le provider fichier de Traefik."
+  log "  (ALLOW_LABEL_CHANGE=1 pour passer outre, en acceptant l'interruption)"
+  exit 3
+fi
+
 count=${#old[@]}
 for id in "${old[@]}"; do
   if [[ $(docker inspect -f '{{.Config.Image}}' "$id") == "$target" ]]; then
